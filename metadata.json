@@ -1,0 +1,6 @@
+{
+  "name": "Ullapara Press Club",
+  "description": "Digital portal for Ullapara Press Club featuring member directory, press statements, local news, events, executive committee, emergency directory, and journalist resources.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
