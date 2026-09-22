@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "Member": {
+      "title": "Member",
+      "description": "Press club committee or executive member",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "designation": { "type": "string" },
+        "media": { "type": "string" },
+        "phone": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "name", "designation", "media", "phone"]
+    },
+    "Notice": {
+      "title": "Notice",
+      "description": "Press release or official club notice",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "badge": { "type": "string" },
+        "summary": { "type": "string" },
+        "fullText": { "type": "string" },
+        "isImportant": { "type": "boolean" },
+        "pdfUrl": { "type": "string" }
+      },
+      "required": ["id", "title", "date", "badge", "summary"]
+    },
+    "Complaint": {
+      "title": "Complaint",
+      "description": "Citizen news tip, query, or report",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "union": { "type": "string" },
+        "subject": { "type": "string" },
+        "details": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "phone", "union", "subject", "details"]
+    },
+    "Subscriber": {
+      "title": "Subscriber",
+      "description": "Newsletter and member applicant subscriber",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "category": { "type": "string" },
+        "subscribedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "category", "subscribedAt"]
+    },
+    "ClubInfo": {
+      "title": "ClubInfo",
+      "description": "General press club identity and contact details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "established": { "type": "string" },
+        "regNo": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "president": { "type": "string" },
+        "generalSecretary": { "type": "string" }
+      },
+      "required": ["name", "address", "phone", "email"]
+    }
+  },
+  "firestore": {
+    "/members/{memberId}": {
+      "schema": { "$ref": "#/entities/Member" },
+      "description": "Committee members and journalists roster"
+    },
+    "/notices/{noticeId}": {
+      "schema": { "$ref": "#/entities/Notice" },
+      "description": "Official notices and press releases"
+    },
+    "/complaints/{complaintId}": {
+      "schema": { "$ref": "#/entities/Complaint" },
+      "description": "Citizen news reports and queries"
+    },
+    "/subscribers/{subscriberId}": {
+      "schema": { "$ref": "#/entities/Subscriber" },
+      "description": "Subscribers for newsletters and member updates"
+    },
+    "/club_info/{infoId}": {
+      "schema": { "$ref": "#/entities/ClubInfo" },
+      "description": "Official club information and configuration"
+    }
+  }
+}

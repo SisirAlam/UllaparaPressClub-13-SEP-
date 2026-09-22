@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Members roster
+    match /members/{memberId} {
+      allow read: if true;
+      allow write: if isSignedIn() && isValidId(memberId);
+    }
+
+    // Official notices & press releases
+    match /notices/{noticeId} {
+      allow read: if true;
+      allow write: if isSignedIn() && isValidId(noticeId);
+    }
+
+    // Citizen reports & tips
+    match /complaints/{complaintId} {
+      allow create: if isValidId(complaintId) &&
+        request.resource.data.name is string &&
+        request.resource.data.phone is string &&
+        request.resource.data.subject is string;
+      allow read, update, delete: if isSignedIn();
+    }
+
+    // Newsletter & member subscribers
+    match /subscribers/{subscriberId} {
+      allow create: if isValidId(subscriberId) &&
+        request.resource.data.email is string &&
+        request.resource.data.name is string;
+      allow read, delete: if isSignedIn();
+    }
+
+    // Club general information
+    match /club_info/{infoId} {
+      allow read: if true;
+      allow write: if isSignedIn() && isValidId(infoId);
+    }
+
+    // Default catch-all
+    match /{document=**} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}

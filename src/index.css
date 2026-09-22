@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee 32s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* =========================================================
+   PRINT-FRIENDLY STYLES
+   Removes ads, navigation, headers, footers, tickers, and interactive UI
+   Ensures crystal-clear contrast and paper readability
+   ========================================================= */
+@media print {
+  @page {
+    margin: 15mm 20mm;
+    size: A4 portrait;
+  }
+
+  /* Hide entire page chrome: headers, navbars, banners, ads, tickers, footers, and interactive buttons */
+  header,
+  nav,
+  #navbar,
+  footer,
+  #footer,
+  .no-print,
+  [data-no-print="true"],
+  .advertisement-banner,
+  .advertisement,
+  .adsbygoogle,
+  #hero,
+  #home,
+  #jubilee,
+  #about,
+  #committee,
+  #distinguished,
+  #complaint,
+  #gallery,
+  #contact,
+  button,
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Body & Root reset */
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 12pt !important;
+    line-height: 1.6 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure print modal overlays do not block or darken the print view */
+  #print-article-modal,
+  .print-modal-container {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    inset: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure print document container takes full page with crisp contrast */
+  .printable-document {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  .printable-document h1,
+  .printable-document h2,
+  .printable-document h3 {
+    color: #000000 !important;
+    page-break-after: avoid;
+  }
+
+  .printable-document p {
+    color: #1a202c !important;
+    orphans: 3;
+    widows: 3;
+  }
+}

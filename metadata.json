@@ -1,6 +1,8 @@
 {
-  "name": "Ullapara Press Club",
-  "description": "Digital portal for Ullapara Press Club featuring member directory, press statements, local news, events, executive committee, emergency directory, and journalist resources.",
+  "name": "Remix উল্লাপাড়া প্রেসক্লাব",
+  "description": "১৯৭৭ সাল থেকে সিরাজগঞ্জের উল্লাপাড়ায় বস্তুনিষ্ঠ সাংবাদিকতা ও সমাজ উন্নয়নে নিয়োজিত উল্লাপাড়া প্রেসক্লাব। সুবর্ণজয়ন্তী ২০২৭ (১৯৭৭-২০২৭)।",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

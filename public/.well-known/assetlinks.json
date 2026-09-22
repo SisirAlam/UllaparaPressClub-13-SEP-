@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "org.ullaparapressclub.app",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:7D:0F:52:AB:E0:44:A2:38:EC:37:A6:DC:9D:2F:3A:45:B6:77:A3:4C:E6:C9:8F:BC:67:89:01:23:45"
+      ]
+    }
+  }
+]
