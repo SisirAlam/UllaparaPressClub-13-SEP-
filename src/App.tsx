@@ -13,6 +13,7 @@ import AboutSection from './components/AboutSection';
 import CommitteeSection from './components/CommitteeSection';
 import DistinguishedMembersSection from './components/DistinguishedMembersSection';
 import NoticeBoard from './components/NoticeBoard';
+import EventCalendar from './components/EventCalendar';
 import CitizenGrievanceSection from './components/CitizenGrievanceSection';
 import GallerySection from './components/GallerySection';
 import ContactSection from './components/ContactSection';
@@ -25,6 +26,7 @@ import WebsiteExportModal from './components/WebsiteExportModal';
 import AndroidAppModal from './components/AndroidAppModal';
 import AndroidInstallBanner from './components/AndroidInstallBanner';
 import GoogleWorkspaceModal from './components/GoogleWorkspaceModal';
+import BreakingNewsToast from './components/BreakingNewsToast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function PressClubApp() {
@@ -49,7 +51,7 @@ function PressClubApp() {
   // Observe which section is currently on screen for active nav styling
   useEffect(() => {
     const handleScroll = () => {
-      const sections = ['home', 'jubilee', 'about', 'committee', 'distinguished', 'notices', 'complaint', 'gallery', 'contact'];
+      const sections = ['home', 'jubilee', 'about', 'committee', 'distinguished', 'notices', 'events', 'complaint', 'gallery', 'contact'];
       const scrollPosition = window.scrollY + 200;
 
       for (const sectionId of sections) {
@@ -85,6 +87,7 @@ function PressClubApp() {
         <DistinguishedMembersSection />
         <AdvertisementBanner variant="inline" />
         <NoticeBoard />
+        <EventCalendar />
         <CitizenGrievanceSection />
         <GallerySection />
         <ContactSection />
@@ -107,6 +110,7 @@ function PressClubApp() {
         onClose={() => setIsAndroidModalOpen(false)}
       />
       <AndroidInstallBanner onOpenModal={() => setIsAndroidModalOpen(true)} />
+      <BreakingNewsToast />
     </div>
   );
 }

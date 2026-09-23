@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ClubInfo, CommitteeMember, NoticeItem, CitizenComplaint, ImageAssets, DistinguishedMember, MeetingAttendance, NewsletterSubscriber, MemberApplication, AdConfig } from '../types';
+import { ClubInfo, CommitteeMember, NoticeItem, CitizenComplaint, ImageAssets, DistinguishedMember, MeetingAttendance, NewsletterSubscriber, MemberApplication, AdConfig, PressClubEvent } from '../types';
 import { CLUB_INFO as DEFAULT_CLUB_INFO, COMMITTEE_MEMBERS as DEFAULT_MEMBERS, NOTICES as DEFAULT_NOTICES, DISTINGUISHED_MEMBERS as DEFAULT_DISTINGUISHED, MEETING_EVENTS as DEFAULT_MEETINGS } from '../data/pressClubData';
+import { DEFAULT_EVENTS } from '../data/pressClubEvents';
 import { db, testFirestoreConnection } from '../lib/firebase';
 import { doc, setDoc, writeBatch } from 'firebase/firestore';
+import { sendLocalPushNotification } from '../utils/pushNotifications';
 
 const DEFAULT_IMAGES: ImageAssets = {
   logo: '/pressclub_official_logo.jpg',
@@ -162,10 +164,18 @@ interface PressClubContextType {
   resetMeetingsToDefault: () => void;
 
   notices: NoticeItem[];
-  addNotice: (notice: Omit<NoticeItem, 'id'>) => void;
+  addNotice: (notice: Omit<NoticeItem, 'id'>, sendPush?: boolean) => void;
+  sendBreakingNewsPush: (notice: NoticeItem) => Promise<boolean>;
   updateNotice: (id: string, updates: Partial<NoticeItem>) => void;
   deleteNotice: (id: string) => void;
   resetNotices: () => void;
+
+  // Events & Interactive Calendar
+  events: PressClubEvent[];
+  addEvent: (event: Omit<PressClubEvent, 'id'>) => void;
+  updateEvent: (id: string, updates: Partial<PressClubEvent>) => void;
+  deleteEvent: (id: string) => void;
+  resetEvents: () => void;
 
   complaints: CitizenComplaint[];
   addComplaint: (complaint: Omit<CitizenComplaint, 'id' | 'date' | 'status'>) => string;
@@ -353,6 +363,22 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
     return DEFAULT_NOTICES;
   });
 
+  // 4b. Events & Interactive Calendar
+  const [events, setEvents] = useState<PressClubEvent[]>(() => {
+    try {
+      const saved = localStorage.getItem('upc_events_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading upc_events_v1 from localStorage:', e);
+    }
+    return DEFAULT_EVENTS;
+  });
+
   // 5. Complaints
   const [complaints, setComplaints] = useState<CitizenComplaint[]>(() => {
     try {
@@ -517,6 +543,14 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
+      localStorage.setItem('upc_events_v1', JSON.stringify(events));
+    } catch (e) {
+      console.warn('Failed to save upc_events_v1:', e);
+    }
+  }, [events]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem('ullapara_pressclub_complaints', JSON.stringify(complaints));
     } catch (e) {
       console.warn('Failed to save ullapara_pressclub_complaints:', e);
@@ -597,12 +631,27 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addNotice = (newNotice: Omit<NoticeItem, 'id'>) => {
+  const sendBreakingNewsPush = async (notice: NoticeItem): Promise<boolean> => {
+    return await sendLocalPushNotification({
+      title: notice.title,
+      body: notice.summary || notice.fullText?.substring(0, 110) || 'প্রেসক্লাব নোটিশ বোর্ডে বিস্তারিত প্রকাশিত হয়েছে।',
+      tag: `notice-${notice.id}`,
+      url: '#notices',
+      isBreaking: true
+    });
+  };
+
+  const addNotice = (newNotice: Omit<NoticeItem, 'id'>, sendPush: boolean = true) => {
     const notice: NoticeItem = {
       ...newNotice,
       id: Date.now().toString()
     };
     setNotices(prev => [notice, ...prev]);
+
+    // Automatically trigger browser push notification if requested or if marked as breaking/important
+    if (sendPush || newNotice.isImportant || newNotice.badge?.includes('জরুরি') || newNotice.badge?.includes('ব্রেকিং')) {
+      sendBreakingNewsPush(notice).catch(err => console.warn('Push notification trigger error:', err));
+    }
   };
 
   const updateNotice = (id: string, updates: Partial<NoticeItem>) => {
@@ -617,6 +666,31 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
     setNotices(DEFAULT_NOTICES);
     try {
       localStorage.removeItem('upc_notices');
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const addEvent = (newEvent: Omit<PressClubEvent, 'id'>) => {
+    const evt: PressClubEvent = {
+      ...newEvent,
+      id: `evt-${Date.now()}`
+    };
+    setEvents(prev => [evt, ...prev]);
+  };
+
+  const updateEvent = (id: string, updates: Partial<PressClubEvent>) => {
+    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+  };
+
+  const deleteEvent = (id: string) => {
+    setEvents(prev => prev.filter(e => e.id !== id));
+  };
+
+  const resetEvents = () => {
+    setEvents(DEFAULT_EVENTS);
+    try {
+      localStorage.removeItem('upc_events_v1');
     } catch (e) {
       console.warn(e);
     }
@@ -990,9 +1064,15 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
         resetMeetingsToDefault,
         notices,
         addNotice,
+        sendBreakingNewsPush,
         updateNotice,
         deleteNotice,
         resetNotices,
+        events,
+        addEvent,
+        updateEvent,
+        deleteEvent,
+        resetEvents,
         complaints,
         addComplaint,
         updateComplaintStatus,

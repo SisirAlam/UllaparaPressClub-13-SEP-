@@ -55,6 +55,7 @@ export default function Navbar({ onNavigate, activeSection }: NavbarProps) {
     { id: 'committee', label: 'কার্যনির্বাহী পরিষদ' },
     { id: 'distinguished', label: 'গুণী সদস্য' },
     { id: 'notices', label: 'নোটিশ বোর্ড' },
+    { id: 'events', label: 'ইভেন্ট ক্যালেন্ডার' },
     { id: 'complaint', label: 'তথ্য ও অভিযোগ প্রদান' },
     { id: 'gallery', label: 'মিডিয়া গ্যালারি' },
     { id: 'contact', label: 'যোগাযোগ' }
@@ -106,15 +107,17 @@ export default function Navbar({ onNavigate, activeSection }: NavbarProps) {
               <span>অ্যান্ড্রয়েড অ্যাপ</span>
             </button>
             
-            {/* Download Website ZIP Trigger */}
-            <button
-              onClick={() => setIsExportModalOpen(true)}
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold transition shadow-xs text-[11px]"
-              title="সম্পূর্ণ ওয়েবসাইট জিপ ও অফলাইন এইচটিএমএল ডাউনলোড করুন"
-            >
-              <Download className="w-3 h-3" />
-              <span>ডাউনলোড জিপ</span>
-            </button>
+            {/* Download WordPress Theme ZIP Trigger - Hidden when already installed on WordPress */}
+            {typeof window !== 'undefined' && !window.PRESSCLUB_WP_CONFIG && (
+              <button
+                onClick={() => setIsExportModalOpen(true)}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold transition shadow-xs text-[11px] cursor-pointer"
+                title="১-ক্লিকে ইনস্টলযোগ্য ওয়ার্ডপ্রেস থিম (ZIP) ও অফলাইন প্যাকেজ নামান"
+              >
+                <Download className="w-3 h-3" />
+                <span>ওয়ার্ডপ্রেস থিম (ZIP)</span>
+              </button>
+            )}
 
             {/* Member Dashboard Trigger */}
             <button

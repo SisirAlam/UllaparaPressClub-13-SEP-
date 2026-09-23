@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { usePressClub } from '../context/PressClubContext';
 import { NewsletterSubscriber } from '../types';
+import { requestPushPermission } from '../utils/pushNotifications';
 
 export default function FooterNewsletter() {
   const { addSubscriber, setIsRecruitmentModalOpen } = usePressClub();
@@ -27,6 +28,7 @@ export default function FooterNewsletter() {
     'প্রেস বিজ্ঞপ্তি ও নোটিশ',
     'সদস্যপদ ও সাধারণ সভা'
   ]);
+  const [enablePushNotification, setEnablePushNotification] = useState(true);
   const [agreedToTerms, setAgreedToTerms] = useState(true);
 
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -89,6 +91,11 @@ export default function FooterNewsletter() {
         setName('');
         setEmail('');
         setPhone('');
+
+        // Request browser push notification permission if opted-in
+        if (enablePushNotification) {
+          requestPushPermission().catch(err => console.warn('Push permission request error:', err));
+        }
       } else {
         setStatus('error');
         setFeedbackMessage(res.message);
@@ -310,16 +317,32 @@ export default function FooterNewsletter() {
               {/* Bottom Actions Row */}
               <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-blue-800/40">
                 
-                {/* Agreement Checkbox */}
-                <label className="flex items-center gap-2.5 cursor-pointer text-xs text-blue-200/90 select-none">
-                  <input
-                    type="checkbox"
-                    checked={agreedToTerms}
-                    onChange={e => setAgreedToTerms(e.target.checked)}
-                    className="w-4 h-4 rounded text-amber-500 bg-slate-900 border-blue-700 focus:ring-amber-400 focus:ring-offset-0"
-                  />
-                  <span>আমি উল্লাপাড়া প্রেসক্লাবের আনুষ্ঠানিক প্রেস বিজ্ঞপ্তি ও কার্যক্রমের আপডেট ইমেইলে গ্রহণে সম্মত।</span>
-                </label>
+                <div className="space-y-2">
+                  {/* Push Notification Opt-in */}
+                  <label className="flex items-center gap-2.5 cursor-pointer text-xs text-amber-300 font-semibold select-none">
+                    <input
+                      type="checkbox"
+                      checked={enablePushNotification}
+                      onChange={e => setEnablePushNotification(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-500 bg-slate-900 border-blue-700 focus:ring-amber-400 focus:ring-offset-0"
+                    />
+                    <span className="flex items-center gap-1.5">
+                      <BellRing className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>সাথে সাথে ব্রেকিং নিউজ ব্রাউজার পুশ নোটিফিকেশনও সক্রিয় রাখুন</span>
+                    </span>
+                  </label>
+
+                  {/* Agreement Checkbox */}
+                  <label className="flex items-center gap-2.5 cursor-pointer text-xs text-blue-200/90 select-none">
+                    <input
+                      type="checkbox"
+                      checked={agreedToTerms}
+                      onChange={e => setAgreedToTerms(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-500 bg-slate-900 border-blue-700 focus:ring-amber-400 focus:ring-offset-0"
+                    />
+                    <span>আমি উল্লাপাড়া প্রেসক্লাবের আনুষ্ঠানিক প্রেস বিজ্ঞপ্তি ও কার্যক্রমের আপডেট গ্রহণে সম্মত।</span>
+                  </label>
+                </div>
 
                 {/* Submit Button */}
                 <button

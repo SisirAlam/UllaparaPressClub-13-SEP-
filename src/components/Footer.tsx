@@ -245,13 +245,15 @@ export default function Footer({ onNavigate }: FooterProps) {
                 <Smartphone className="w-3.5 h-3.5" />
                 <span>অ্যান্ড্রয়েড অ্যাপ ইনস্টল ও APK</span>
               </button>
-              <button
-                onClick={() => setIsExportModalOpen(true)}
-                className="w-full py-2.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>ওয়েবসাইট জিপ নামান (Offline ZIP)</span>
-              </button>
+              {typeof window !== 'undefined' && !window.PRESSCLUB_WP_CONFIG && (
+                <button
+                  onClick={() => setIsExportModalOpen(true)}
+                  className="w-full py-2.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>১-ক্লিকে ওয়ার্ডপ্রেস থিম (ZIP) নামান</span>
+                </button>
+              )}
             </div>
           </div>
 

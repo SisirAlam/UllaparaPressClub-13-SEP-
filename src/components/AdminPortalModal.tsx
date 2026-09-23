@@ -39,8 +39,11 @@ import {
   BadgeAlert,
   ArrowRight,
   Code,
-  CheckCircle
+  CheckCircle,
+  BellRing,
+  Radio
 } from 'lucide-react';
+import { requestPushPermission, getPushPermission, isPushSupported } from '../utils/pushNotifications';
 
 export default function AdminPortalModal() {
   const {
@@ -63,6 +66,7 @@ export default function AdminPortalModal() {
     resetMembers,
     notices,
     addNotice,
+    sendBreakingNewsPush,
     updateNotice,
     deleteNotice,
     resetNotices,
@@ -132,6 +136,42 @@ export default function AdminPortalModal() {
   // Security / PIN change state
   const [newPin, setNewPin] = useState('');
   const [pinSuccess, setPinSuccess] = useState(false);
+
+  // Push notification state
+  const [sendPushOnCreate, setSendPushOnCreate] = useState(true);
+  const [pushTestStatus, setPushTestStatus] = useState<string | null>(null);
+
+  const handleTestPushNotification = async () => {
+    setPushTestStatus('অনুমতি যাচাই করা হচ্ছে...');
+    const currentPerm = getPushPermission();
+    if (currentPerm !== 'granted') {
+      const result = await requestPushPermission();
+      if (result !== 'granted') {
+        setPushTestStatus('❌ ব্রাউজার নোটিফিকেশনের অনুমতি প্রদান করা হয়নি।');
+        setTimeout(() => setPushTestStatus(null), 4000);
+        return;
+      }
+    }
+
+    const sent = await sendBreakingNewsPush({
+      id: 'test-' + Date.now(),
+      title: '🔴 উল্লাপাড়া প্রেসক্লাব: টেস্ট ব্রেকিং নিউজ নোটিফিকেশন',
+      summary: 'টেস্ট পুশ নোটিফিকেশন সফলভাবে আপনার ব্রাউজারে পৌঁছেছে। ব্রেকিং নিউজ প্রকাশের সাথে সাথে সাবস্ক্রাইবাররা এই অ্যালার্ট পাবেন।',
+      fullText: 'টেস্ট পুশ নোটিফিকেশন সফলভাবে আপনার ব্রাউজারে পৌঁছেছে। ব্রেকিং নিউজ প্রকাশের সাথে সাথে সাবস্ক্রাইবাররা এই অ্যালার্ট পাবেন।',
+      date: 'আজ',
+      badge: 'ব্রেকিং নিউজ',
+      category: 'general',
+      type: 'notice',
+      isImportant: true
+    });
+
+    if (sent) {
+      setPushTestStatus('✅ টেস্ট পুশ নোটিফিকেশন পাঠানো হয়েছে!');
+    } else {
+      setPushTestStatus('⚠️ নোটিফিকেশন ট্রিগার হয়েছে।');
+    }
+    setTimeout(() => setPushTestStatus(null), 3500);
+  };
 
   // Complaints filter
   const [complaintFilter, setComplaintFilter] = useState<'all' | 'pending' | 'reviewing' | 'resolved'>('all');
@@ -217,7 +257,7 @@ export default function AdminPortalModal() {
   const handleCreateNotice = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNotice.title || !newNotice.summary) return;
-    addNotice(newNotice);
+    addNotice(newNotice, sendPushOnCreate);
     setIsAddNoticeOpen(false);
     setNewNotice({
       title: '',
@@ -227,6 +267,12 @@ export default function AdminPortalModal() {
       fullText: '',
       isImportant: true
     });
+    setAppActionNotice(
+      sendPushOnCreate
+        ? 'নতুন নোটিশ প্রকাশিত হয়েছে এবং গ্রাহকদের ডিভাইসে পুশ নোটিফিকেশন পাঠানো হয়েছে!'
+        : 'নতুন নোটিশ সফলভাবে প্রকাশিত হয়েছে!'
+    );
+    setTimeout(() => setAppActionNotice(null), 3500);
   };
 
   const handleSaveEditedNotice = (e: React.FormEvent) => {
@@ -1967,7 +2013,16 @@ export default function AdminPortalModal() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleTestPushNotification}
+                        className="px-3 py-1.5 text-xs text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition flex items-center gap-1.5 font-bold cursor-pointer"
+                        title="সাবস্ক্রাইবার ব্রাউজার পুশ নোটিফিকেশন টেস্ট করুন"
+                      >
+                        <BellRing className="w-3.5 h-3.5 text-red-600" />
+                        <span>টেস্ট পুশ পাঠান</span>
+                      </button>
                       <button
                         onClick={resetNotices}
                         className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 border border-slate-300 rounded-lg hover:bg-slate-50 transition flex items-center gap-1"
@@ -1984,6 +2039,13 @@ export default function AdminPortalModal() {
                       </button>
                     </div>
                   </div>
+
+                  {pushTestStatus && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-900 flex items-center gap-2">
+                      <BellRing className="w-4 h-4 text-red-600 animate-pulse" />
+                      <span>{pushTestStatus}</span>
+                    </div>
+                  )}
 
                   {/* Notices List */}
                   <div className="space-y-3">
@@ -2008,7 +2070,19 @@ export default function AdminPortalModal() {
                           <p className="text-xs text-slate-600 line-clamp-1">{notice.summary}</p>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await sendBreakingNewsPush(notice);
+                              setAppActionNotice(`"🔴 ${notice.title}" নোটিফিকেশনটি সকল গ্রাহকের ব্রাউজারে পুশ করা হয়েছে!`);
+                              setTimeout(() => setAppActionNotice(null), 3500);
+                            }}
+                            className="p-1.5 text-amber-600 hover:bg-amber-100 rounded-lg transition"
+                            title="ব্রাউজারে পুশ নোটিফিকেশন পাঠান"
+                          >
+                            <BellRing className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => setEditingNotice(notice)}
                             className="p-1.5 text-blue-700 hover:bg-blue-100 rounded-lg transition"
@@ -2121,6 +2195,27 @@ export default function AdminPortalModal() {
                             <label htmlFor="isImportant" className="text-xs text-slate-700 font-medium">
                               জরুরি ও শীর্ষ নোটিশ হিসেবে চিহ্নিত করুন
                             </label>
+                          </div>
+
+                          <div className="p-3 bg-red-50/80 border border-red-200 rounded-xl space-y-1">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <BellRing className="w-4 h-4 text-red-600 shrink-0" />
+                                <span className="text-xs font-bold text-red-950">
+                                  গ্রাহকদের ডিভাইসে স্বয়ংক্রিয় পুশ নোটিফিকেশন পাঠান
+                                </span>
+                              </div>
+                              <input
+                                type="checkbox"
+                                id="sendPushOnCreate"
+                                checked={sendPushOnCreate}
+                                onChange={(e) => setSendPushOnCreate(e.target.checked)}
+                                className="w-4 h-4 rounded text-red-600 focus:ring-red-500"
+                              />
+                            </div>
+                            <p className="text-[11px] text-red-800/80 pl-6">
+                              নোটিশটি প্রকাশের সাথে সাথে সকল গ্রাহক ও পাঠকের ব্রাউজারে ইনস্ট্যান্ট পুশ অ্যালার্ট পাঠানো হবে।
+                            </p>
                           </div>
 
                           <div className="pt-2 flex justify-end gap-2">

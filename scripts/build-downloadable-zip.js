@@ -897,6 +897,9 @@ add_shortcode('pressclub_adsense', function() {
 <head>
   <meta charset="<?php bloginfo( 'charset' ); ?>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="description" content="১৯৭৭ সাল থেকে সিরাজগঞ্জ প্রেসক্লাব ও উল্লাপাড়া সাংবাদিকতার ঐতিহ্যবাহী প্রতিষ্ঠান উল্লাপাড়া প্রেসক্লাব। সংবাদপত্র ও বস্তুনিষ্ঠ গণমাধ্যম চর্চায় নিয়োজিত। সুবর্ণজয়ন্তী ২০২৭ (১৯৭৭-২০২৭)।">
+  <meta name="keywords" content="উল্লাপাড়া সাংবাদিকতা, সিরাজগঞ্জ প্রেসক্লাব, সংবাদপত্র, উল্লাপাড়া প্রেসক্লাব, Ullapara Press Club, সিরাজগঞ্জ সাংবাদিক, প্রেস বিজ্ঞপ্তি, বাংলা সংবাদপত্র, সিরাজগঞ্জ খবর, মিডিয়া পোর্টাল">
+  <meta name="author" content="উল্লাপাড়া প্রেসক্লাব আইসিটি সেল">
   <link rel="icon" type="image/png" href="<?php echo esc_url( get_template_directory_uri() ); ?>/logo.png">
   <link rel="apple-touch-icon" href="<?php echo esc_url( get_template_directory_uri() ); ?>/logo.png">
   <title><?php wp_title('|', true, 'right'); ?> <?php bloginfo('name'); ?> - উল্লাপাড়া প্রেসক্লাব</title>

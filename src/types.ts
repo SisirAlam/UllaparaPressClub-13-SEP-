@@ -58,6 +58,32 @@ export interface MeetingAttendance {
   }[];
 }
 
+export type EventCategory = 'meeting' | 'training' | 'press_briefing' | 'cultural' | 'jubilee';
+
+export interface PressClubEvent {
+  id: string;
+  title: string;
+  date: string; // Format: 'YYYY-MM-DD'
+  dateBangla: string;
+  time: string;
+  endTime?: string;
+  location: string;
+  category: EventCategory;
+  categoryName: string;
+  organizer: string;
+  chiefGuest?: string;
+  speaker?: string;
+  description: string;
+  registrationOpen?: boolean;
+  registrationDeadline?: string;
+  attendeesCount?: number;
+  contactPerson?: string;
+  contactPhone?: string;
+  bannerImage?: string;
+  badge?: string;
+  tags?: string[];
+}
+
 export type NoticeCategory = 'local_news' | 'general' | 'training' | 'meeting' | 'award';
 
 export interface NoticeItem {
