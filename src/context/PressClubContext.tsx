@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ClubInfo, CommitteeMember, NoticeItem, CitizenComplaint, ImageAssets, DistinguishedMember, MeetingAttendance, NewsletterSubscriber, MemberApplication, AdConfig, PressClubEvent } from '../types';
 import { CLUB_INFO as DEFAULT_CLUB_INFO, COMMITTEE_MEMBERS as DEFAULT_MEMBERS, NOTICES as DEFAULT_NOTICES, DISTINGUISHED_MEMBERS as DEFAULT_DISTINGUISHED, MEETING_EVENTS as DEFAULT_MEETINGS } from '../data/pressClubData';
 import { DEFAULT_EVENTS } from '../data/pressClubEvents';
-import { db, testFirestoreConnection } from '../lib/firebase';
+import { db, testFirestoreConnection, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, setDoc, writeBatch } from 'firebase/firestore';
 import { sendLocalPushNotification } from '../utils/pushNotifications';
 
@@ -446,7 +446,37 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
         lastUpdated: new Date().toISOString()
       }, { merge: true });
 
-      // 2. Sync Subscribers
+      // 2. Sync Members
+      members.slice(0, 15).forEach((mem) => {
+        const memRef = doc(db, 'members', mem.id);
+        batch.set(memRef, {
+          id: mem.id,
+          name: mem.name,
+          designation: mem.designation,
+          media: mem.media,
+          phone: mem.phone || '',
+          photoUrl: mem.photoUrl || '',
+          category: mem.category
+        }, { merge: true });
+      });
+
+      // 3. Sync Events
+      events.slice(0, 10).forEach((evt) => {
+        const evtRef = doc(db, 'events', evt.id);
+        batch.set(evtRef, {
+          id: evt.id,
+          title: evt.title,
+          date: evt.date,
+          dateBangla: evt.dateBangla,
+          time: evt.time,
+          location: evt.location,
+          category: evt.category,
+          categoryName: evt.categoryName,
+          description: evt.description
+        }, { merge: true });
+      });
+
+      // 4. Sync Subscribers
       subscribers.forEach((sub) => {
         const subRef = doc(db, 'subscribers', sub.id);
         batch.set(subRef, {
@@ -459,7 +489,7 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
         }, { merge: true });
       });
 
-      // 3. Sync Notices
+      // 5. Sync Notices
       notices.slice(0, 10).forEach((notice) => {
         const noticeRef = doc(db, 'notices', notice.id);
         batch.set(noticeRef, {
@@ -477,6 +507,7 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
       setIsFirestoreConnected(true);
     } catch (error) {
       console.error('Firestore sync error:', error);
+      handleFirestoreError(error, OperationType.WRITE, 'batch');
       throw error;
     }
   };
@@ -706,6 +737,21 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
       status: 'pending'
     };
     setComplaints(prev => [newEntry, ...prev]);
+
+    // Persist to Firebase Firestore
+    setDoc(doc(db, 'complaints', newId), {
+      id: newId,
+      name: complaint.name || 'বেনামী নাগরিক',
+      phone: complaint.contact || 'N/A',
+      union: complaint.location || 'উল্লাপাড়া',
+      subject: complaint.title,
+      details: complaint.details,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    }).catch(err => {
+      console.warn('Firestore complaints sync note:', err);
+    });
+
     return newId;
   };
 
@@ -797,6 +843,18 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
     };
 
     setSubscribers(prev => [createdSubscriber, ...prev]);
+
+    // Persist to Firebase Firestore
+    setDoc(doc(db, 'subscribers', createdSubscriber.id), {
+      id: createdSubscriber.id,
+      name: createdSubscriber.name,
+      email: createdSubscriber.email,
+      phone: createdSubscriber.phone || '',
+      category: createdSubscriber.category,
+      subscribedAt: createdSubscriber.subscribedAt
+    }).catch(err => {
+      console.warn('Firestore subscriber sync note:', err);
+    });
 
     // If running in WordPress environment, notify WordPress REST API
     if (typeof window !== 'undefined' && window.PRESSCLUB_WP_CONFIG) {

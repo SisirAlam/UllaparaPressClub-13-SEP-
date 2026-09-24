@@ -1,7 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
+    // Global Catch-all: default-deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
     function isSignedIn() {
       return request.auth != null;
     }
@@ -10,44 +15,103 @@ service cloud.firestore {
       return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // Members roster
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'sisir.info@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidMember(data) {
+      return data.keys().hasAll(['id', 'name', 'designation', 'media', 'phone']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.name is string && data.name.size() <= 200 &&
+        data.designation is string && data.designation.size() <= 200 &&
+        data.media is string && data.media.size() <= 200 &&
+        data.phone is string && data.phone.size() <= 50;
+    }
+
+    function isValidNotice(data) {
+      return data.keys().hasAll(['id', 'title', 'date', 'badge', 'summary']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.title is string && data.title.size() <= 300 &&
+        data.date is string && data.date.size() <= 100 &&
+        data.badge is string && data.badge.size() <= 100 &&
+        data.summary is string && data.summary.size() <= 1000;
+    }
+
+    function isValidEvent(data) {
+      return data.keys().hasAll(['id', 'title', 'date', 'location', 'category', 'description']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.title is string && data.title.size() <= 300 &&
+        data.date is string && data.date.size() <= 50 &&
+        data.location is string && data.location.size() <= 300 &&
+        data.category is string && data.category.size() <= 50 &&
+        data.description is string && data.description.size() <= 5000;
+    }
+
+    function isValidComplaint(data) {
+      return data.keys().hasAll(['id', 'name', 'phone', 'union', 'subject', 'details']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
+        data.phone is string && data.phone.size() > 0 && data.phone.size() <= 50 &&
+        data.union is string && data.union.size() <= 100 &&
+        data.subject is string && data.subject.size() > 0 && data.subject.size() <= 300 &&
+        data.details is string && data.details.size() > 0 && data.details.size() <= 5000;
+    }
+
+    function isValidSubscriber(data) {
+      return data.keys().hasAll(['id', 'name', 'email', 'category', 'subscribedAt']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.name is string && data.name.size() <= 150 &&
+        data.email is string && data.email.size() <= 150 &&
+        data.category is string && data.category.size() <= 100;
+    }
+
+    // Members directory
     match /members/{memberId} {
       allow read: if true;
-      allow write: if isSignedIn() && isValidId(memberId);
+      allow write: if isSignedIn() && isValidId(memberId) && isValidMember(incoming());
     }
 
     // Official notices & press releases
     match /notices/{noticeId} {
       allow read: if true;
-      allow write: if isSignedIn() && isValidId(noticeId);
+      allow write: if isSignedIn() && isValidId(noticeId) && isValidNotice(incoming());
     }
 
-    // Citizen reports & tips
+    // Events & academy schedule
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if isSignedIn() && isValidId(eventId) && isValidEvent(incoming());
+    }
+
+    // Citizen reports, grievances & news tips
     match /complaints/{complaintId} {
-      allow create: if isValidId(complaintId) &&
-        request.resource.data.name is string &&
-        request.resource.data.phone is string &&
-        request.resource.data.subject is string;
+      allow create: if isValidId(complaintId) && isValidComplaint(incoming());
       allow read, update, delete: if isSignedIn();
     }
 
-    // Newsletter & member subscribers
+    // Newsletter & applicant subscribers
     match /subscribers/{subscriberId} {
-      allow create: if isValidId(subscriberId) &&
-        request.resource.data.email is string &&
-        request.resource.data.name is string;
+      allow create: if isValidId(subscriberId) && isValidSubscriber(incoming());
       allow read, delete: if isSignedIn();
     }
 
-    // Club general information
+    // Club general information & metadata
     match /club_info/{infoId} {
       allow read: if true;
       allow write: if isSignedIn() && isValidId(infoId);
     }
 
-    // Default catch-all
-    match /{document=**} {
-      allow read, write: if isSignedIn();
+    // Administrative access credentials
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }
