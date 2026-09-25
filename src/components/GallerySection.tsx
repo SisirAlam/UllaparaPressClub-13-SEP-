@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { usePressClub } from '../context/PressClubContext';
 import { GALLERY_ITEMS } from '../data/pressClubData';
 import { GalleryItem } from '../types';
+import SectionActionToolbar from './SectionActionToolbar';
 import { 
   Image as ImageIcon, 
   X, 
@@ -59,11 +60,14 @@ export default function GallerySection() {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-12">
-          <span className="text-amber-950 bg-amber-100 border border-amber-300 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-xs">
-            <ImageIcon className="w-3.5 h-3.5 text-amber-700" />
-            স্মৃতি ও কার্যক্রম
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0d3b66] mt-3 font-serif">
+          <div className="flex items-center justify-center gap-3 mb-3 flex-wrap">
+            <span className="text-amber-950 bg-amber-100 border border-amber-300 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-xs">
+              <ImageIcon className="w-3.5 h-3.5 text-amber-700" />
+              স্মৃতি ও কার্যক্রম
+            </span>
+            <SectionActionToolbar sectionId="gallery" sectionTitle="প্রেসক্লাব ফটো ও মিডিয়া গ্যালারি" />
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0d3b66] mt-1 font-serif">
             প্রেসক্লাব ফটো ও মিডিয়া গ্যালারি
           </h2>
           <p className="text-slate-600 mt-3 text-base">

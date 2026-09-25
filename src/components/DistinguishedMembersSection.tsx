@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePressClub } from '../context/PressClubContext';
 import { DistinguishedMember } from '../types';
+import SectionActionToolbar from './SectionActionToolbar';
 import { 
   Award, 
   BookOpen, 
@@ -30,11 +31,14 @@ export default function DistinguishedMembersSection() {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-14">
-          <span className="text-amber-950 bg-amber-100 border border-amber-300 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-xs">
-            <Award className="w-3.5 h-3.5 text-amber-700" />
-            সাংবাদিকতায় বিশেষ অবদান
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0d3b66] mt-3 font-serif tracking-tight">
+          <div className="flex items-center justify-center gap-3 mb-3 flex-wrap">
+            <span className="text-amber-950 bg-amber-100 border border-amber-300 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-xs">
+              <Award className="w-3.5 h-3.5 text-amber-700" />
+              সাংবাদিকতায় বিশেষ অবদান
+            </span>
+            <SectionActionToolbar sectionId="distinguished" sectionTitle="গুণী ও প্রবীণ সাংবাদিকবৃন্দ" />
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0d3b66] mt-1 font-serif tracking-tight">
             গুণী ও প্রবীণ সাংবাদিকবৃন্দ (Distinguished Members)
           </h2>
           <p className="text-slate-600 mt-3 text-base leading-relaxed">

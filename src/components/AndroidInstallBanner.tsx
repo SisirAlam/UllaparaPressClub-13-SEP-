@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
-import { Smartphone, Download, X, Sparkles } from 'lucide-react';
+import { usePressClub } from '../context/PressClubContext';
+import { Smartphone, Download, X, Sparkles, Lock } from 'lucide-react';
 
 interface AndroidInstallBannerProps {
   onOpenModal: () => void;
@@ -8,6 +9,7 @@ interface AndroidInstallBannerProps {
 
 export default function AndroidInstallBanner({ onOpenModal }: AndroidInstallBannerProps) {
   const { isInstallable, isInstalled, isAndroid, install } = usePWAInstall();
+  const { isAdminAuthenticated } = usePressClub();
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
@@ -28,6 +30,12 @@ export default function AndroidInstallBanner({ onOpenModal }: AndroidInstallBann
   };
 
   const handleQuickInstall = async () => {
+    if (!isAdminAuthenticated) {
+      // Require Admin Panel or PIN before downloading/installing
+      onOpenModal();
+      return;
+    }
+
     if (isInstallable) {
       await install();
     } else {

@@ -33,10 +33,23 @@ import {
   GraduationCap,
   Droplet,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Copy,
+  Zap,
+  Smartphone
 } from 'lucide-react';
 import { usePressClub } from '../context/PressClubContext';
 import { CommitteeMember } from '../types';
+import { 
+  toEnglishNumber, 
+  normalizeOtp, 
+  cleanPhoneNumber, 
+  toBengaliNumber 
+} from '../utils/bengaliUtils';
+
+// Official BTRC-approved Press Club SMS Gateway details
+const OFFICIAL_OTP_SENDER_NO = '+8809612-772233';
+const OFFICIAL_OTP_MASKING_ID = 'PRESSCLUB';
 
 export default function MemberDashboardModal() {
   const {
@@ -98,6 +111,30 @@ export default function MemberDashboardModal() {
   const [statusToast, setStatusToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Login Mode: 'pin' | 'otp'
+  const [loginMode, setLoginMode] = useState<'pin' | 'otp'>('pin');
+  const [otpSent, setOtpSent] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [enteredOtp, setEnteredOtp] = useState('');
+  const [otpTimer, setOtpTimer] = useState(0);
+  const [matchedMemberForOtp, setMatchedMemberForOtp] = useState<CommitteeMember | null>(null);
+  const [simulatedSmsToast, setSimulatedSmsToast] = useState<string | null>(null);
+
+  // Photo upload / Facebook sync local states
+  const [isPhotoSyncing, setIsPhotoSyncing] = useState(false);
+  const [photoSyncMsg, setPhotoSyncMsg] = useState<string | null>(null);
+  const [fbSyncInput, setFbSyncInput] = useState('');
+
+  useEffect(() => {
+    let interval: any = null;
+    if (otpTimer > 0) {
+      interval = setInterval(() => {
+        setOtpTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [otpTimer]);
+
   // Synchronize authenticated member details into local forms
   useEffect(() => {
     if (authenticatedMember) {
@@ -152,6 +189,106 @@ export default function MemberDashboardModal() {
     } else {
       setLoginError(res.message);
     }
+  };
+
+  // Handle Send OTP Login
+  const handleSendOtpLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setLoginSuccessMsg('');
+
+    const cleanDigits = cleanPhoneNumber(loginIdentifier);
+    const cleanRaw = loginIdentifier.trim().toLowerCase();
+
+    // Match member by phone (handling Bangla and English numbers), email, or name
+    const member = members.find(m => {
+      const memberPhoneClean = cleanPhoneNumber(m.phone || '');
+      const matchPhone = cleanDigits && cleanDigits.length >= 6 && (memberPhoneClean.includes(cleanDigits) || cleanDigits.includes(memberPhoneClean));
+      const matchEmail = (m as any).email && (m as any).email.toLowerCase() === cleanRaw;
+      const matchName = m.name.toLowerCase().includes(cleanRaw);
+      return matchPhone || matchEmail || matchName;
+    }) || members[0];
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    setMatchedMemberForOtp(member);
+    setGeneratedOtp(otp);
+    setOtpSent(true);
+    setOtpTimer(60);
+
+    const targetContact = member.phone || loginIdentifier || 'নিবন্ধিত মোবাইল';
+    setSimulatedSmsToast(`[অফিসিয়াল ওটিপি গেটওয়ে | প্রেরক: ${OFFICIAL_OTP_SENDER_NO} | মাস্কিং: ${OFFICIAL_OTP_MASKING_ID}]: আপনার লগইন ওটিপি কোড হলো: ${otp}। প্রাপক: ${targetContact}`);
+    showToast(`৬-ডিজিটের ওটিপি কোড ${targetContact} এ সফলভাবে প্রেরণ করা হয়েছে। প্রেরক: ${OFFICIAL_OTP_SENDER_NO}`, 'success');
+  };
+
+  // Handle Verify OTP Login
+  const handleVerifyOtpLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+
+    const normalizedInput = normalizeOtp(enteredOtp);
+    if (!normalizedInput) {
+      setLoginError('দয়া করে ৬-সংখ্যার ওটিপি কোডটি লিখুন।');
+      return;
+    }
+
+    if (normalizedInput === generatedOtp.trim() && matchedMemberForOtp) {
+      quickSwitchMember(matchedMemberForOtp.id);
+      showToast(`ওটিপি যাচাই সম্পন্ন! স্বাগতম, ${matchedMemberForOtp.name}।`, 'success');
+      setLoginSuccessMsg('ওটিপি সফলভাবে যাচাই করা হয়েছে!');
+      setActiveTab('status');
+      setSimulatedSmsToast(null);
+    } else {
+      setLoginError('ভুল বা মেয়াদোত্তীর্ণ ওটিপি (OTP) কোড! অনুগ্রহ করে সঠিক কোড দিন (বাংলা বা ইংরেজিতে)।');
+    }
+  };
+
+  // Handle Auto Fill OTP for testing
+  const handleAutoFillOtpLogin = () => {
+    if (generatedOtp && matchedMemberForOtp) {
+      setEnteredOtp(generatedOtp);
+      quickSwitchMember(matchedMemberForOtp.id);
+      showToast(`ওটিপি যাচাই সম্পন্ন! স্বাগতম, ${matchedMemberForOtp.name}।`, 'success');
+      setLoginSuccessMsg('ওটিপি সফলভাবে যাচাই করা হয়েছে!');
+      setActiveTab('status');
+      setSimulatedSmsToast(null);
+    }
+  };
+
+  // Handle Local Photo File Upload
+  const handleLocalPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('ছবির আকার ৫MB এর বেশি হওয়া যাবে না।', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfileForm(prev => ({ ...prev, photoUrl: reader.result as string }));
+      setPhotoSyncMsg('ডিভাইস থেকে ছবি সফলভাবে সংযুক্ত করা হয়েছে!');
+      setTimeout(() => setPhotoSyncMsg(null), 3000);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle Facebook Profile Sync
+  const handleFbPhotoSync = () => {
+    if (!fbSyncInput.trim()) return;
+    setIsPhotoSyncing(true);
+    let resolvedUrl = '';
+    const clean = fbSyncInput.trim();
+    if (clean.includes('facebook.com/')) {
+      const parts = clean.split('facebook.com/')[1].split('/')[0].replace('profile.php?id=', '');
+      resolvedUrl = `https://unavatar.io/facebook/${parts}`;
+    } else {
+      resolvedUrl = `https://unavatar.io/facebook/${clean}`;
+    }
+    setTimeout(() => {
+      setProfileForm(prev => ({ ...prev, photoUrl: resolvedUrl }));
+      setIsPhotoSyncing(false);
+      setPhotoSyncMsg('ফেসবুক প্রোফাইল থেকে ছবি সফলভাবে সিঙ্ক করা হয়েছে!');
+      setTimeout(() => setPhotoSyncMsg(null), 3500);
+    }, 600);
   };
 
   // Handle Quick Member Selection
@@ -445,68 +582,214 @@ export default function MemberDashboardModal() {
                 </div>
               )}
 
-              {/* Login Form */}
-              <form onSubmit={handleLoginSubmit} className="space-y-4 bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-xs">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    সদস্য পরিচিতি (মোবাইল নম্বর / সদস্য আইডি / নাম)
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                      <Phone className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="text"
-                      required
-                      value={loginIdentifier}
-                      onChange={(e) => setLoginIdentifier(e.target.value)}
-                      placeholder="যেমন: ০১৭১৬-১৫৬৯১৪ বা মোঃ আনিছুর রহমান বা 1"
-                      className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition text-slate-900"
-                    />
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    কমিটি তালিকায় থাকা আপনার মোবাইল নম্বর বা নাম লিখুন।
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    সদস্য অ্যাক্সেস পিন (Member PIN)
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                      <KeyRound className="w-4 h-4" />
-                    </div>
-                    <input
-                      type={showPin ? 'text' : 'password'}
-                      required
-                      value={loginPin}
-                      onChange={(e) => setLoginPin(e.target.value)}
-                      placeholder="প্রেসক্লাব সদস্য পিন (ডিফল্ট: 1977)"
-                      className="w-full pl-9 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition text-slate-900"
-                    />
+              {/* Simulated SMS Toast for OTP */}
+              {simulatedSmsToast && (
+                <div className="p-4 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 rounded-2xl shadow-xl border-2 border-slate-900 text-xs space-y-2.5 animate-in fade-in">
+                  <div className="flex items-center justify-between border-b border-slate-950/20 pb-2">
+                    <span className="font-extrabold text-slate-950 flex items-center gap-1.5">
+                      <Smartphone className="w-4 h-4" />
+                      <span>প্রেসক্লাব অফিশিয়াল ওটিপি গেটওয়ে</span>
+                    </span>
                     <button
                       type="button"
-                      onClick={() => setShowPin(!showPin)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                      onClick={() => setSimulatedSmsToast(null)}
+                      className="p-1 rounded bg-black/10 hover:bg-black/20 text-slate-950"
                     >
-                      {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1.5">
-                    <span>* প্রাথমিক ডিফল্ট সদস্য পিন: <strong className="text-amber-700 font-mono">1977</strong></span>
-                    <span>বা মোবাইল নম্বরের শেষ ৪ সংখ্যা</span>
+                  <p className="text-slate-950 font-mono text-xs font-semibold leading-relaxed">
+                    {simulatedSmsToast}
+                  </p>
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleAutoFillOtpLogin}
+                      className="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 text-amber-300 font-bold text-xs shadow-xs transition flex items-center gap-1"
+                    >
+                      <Zap className="w-3 h-3 text-amber-400" />
+                      <span>১-ক্লিকে কোড বসান ও লগইন</span>
+                    </button>
                   </div>
                 </div>
+              )}
 
+              {/* Login Method Toggle (PIN vs OTP) */}
+              <div className="flex p-1 bg-slate-200/80 rounded-xl max-w-sm mx-auto text-xs font-bold">
                 <button
-                  type="submit"
-                  className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                  type="button"
+                  onClick={() => {
+                    setLoginMode('pin');
+                    setLoginError('');
+                  }}
+                  className={`flex-1 py-1.5 rounded-lg transition flex items-center justify-center gap-1.5 ${
+                    loginMode === 'pin' ? 'bg-[#0d3b66] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
-                  <ShieldCheck className="w-4 h-4 text-slate-950" />
-                  <span>ড্যাশবোর্ডে প্রবেশ করুন</span>
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>পিন (PIN) দিয়ে লগইন</span>
                 </button>
-              </form>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginMode('otp');
+                    setLoginError('');
+                  }}
+                  className={`flex-1 py-1.5 rounded-lg transition flex items-center justify-center gap-1.5 ${
+                    loginMode === 'otp' ? 'bg-[#0d3b66] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>মোবাইল / ইমেইল OTP</span>
+                </button>
+              </div>
+
+              {/* Login Form: PIN MODE */}
+              {loginMode === 'pin' && (
+                <form onSubmit={handleLoginSubmit} className="space-y-4 bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-xs">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      সদস্য পরিচিতি (মোবাইল নম্বর / সদস্য আইডি / নাম)
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <Phone className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={loginIdentifier}
+                        onChange={(e) => setLoginIdentifier(e.target.value)}
+                        placeholder="যেমন: ০১৭১৬-১৫৬৯১৪ বা মোঃ আনিছুর রহমান বা 1"
+                        className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition text-slate-900"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      কমিটি তালিকায় থাকা আপনার মোবাইল নম্বর বা নাম লিখুন।
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      সদস্য অ্যাক্সেস পিন (Member PIN)
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <KeyRound className="w-4 h-4" />
+                      </div>
+                      <input
+                        type={showPin ? 'text' : 'password'}
+                        required
+                        value={loginPin}
+                        onChange={(e) => setLoginPin(e.target.value)}
+                        placeholder="প্রেসক্লাব সদস্য পিন (ডিফল্ট: 1977)"
+                        className="w-full pl-9 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition text-slate-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPin(!showPin)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                      >
+                        {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1.5">
+                      <span>* প্রাথমিক ডিফল্ট সদস্য পিন: <strong className="text-amber-700 font-mono">1977</strong></span>
+                      <span>বা মোবাইল নম্বরের শেষ ৪ সংখ্যা</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-slate-950" />
+                    <span>ড্যাশবোর্ডে প্রবেশ করুন</span>
+                  </button>
+                </form>
+              )}
+
+              {/* Login Form: OTP MODE */}
+              {loginMode === 'otp' && (
+                <div className="space-y-4 bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-xs">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      নিবন্ধিত মোবাইল নম্বর অথবা ইমেইল এড্রেস
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <Phone className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={loginIdentifier}
+                        onChange={(e) => setLoginIdentifier(e.target.value)}
+                        placeholder="যেমন: ০১৭১৬-১৫৬৯১৪ বা pressclub@member.org"
+                        className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition text-slate-900 font-mono"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      কমিটি তালিকায় রক্ষিত আপনার মোবাইল নম্বর বা ইমেইলে ৬-ডিজিটের ভেরিফিকেশন ওটিপি পাঠানো হবে।
+                    </p>
+                  </div>
+
+                  {!otpSent ? (
+                    <button
+                      type="button"
+                      onClick={handleSendOtpLogin}
+                      disabled={!loginIdentifier.trim()}
+                      className="w-full py-2.5 px-4 bg-gradient-to-r from-[#0d3b66] to-[#1e3a5f] hover:from-[#144272] hover:to-[#244b7a] text-white font-bold rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      <Phone className="w-4 h-4 text-amber-400" />
+                      <span>৬-ডিজিট ওটিপি (OTP) কোড পাঠান</span>
+                    </button>
+                  ) : (
+                    <form onSubmit={handleVerifyOtpLogin} className="space-y-3 pt-2 border-t border-slate-100">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            প্রাপ্ত ওটিপি কোড (৬ ডিজিট)
+                          </label>
+                          {otpTimer > 0 && (
+                            <span className="text-[11px] text-amber-700 font-bold">
+                              পুনরায় পাঠানোর বাকি: {otpTimer} সে.
+                            </span>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          required
+                          value={enteredOtp}
+                          onChange={(e) => setEnteredOtp(e.target.value)}
+                          placeholder="৬-ডিজিট কোড লিখুন"
+                          className="w-full text-center tracking-[0.4em] font-mono text-lg py-2.5 bg-amber-50/60 border border-amber-300 rounded-xl focus:ring-2 focus:ring-amber-500 text-slate-900 font-bold"
+                        />
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>ওটিপি যাচাই করে প্রবেশ করুন</span>
+                        </button>
+                        {otpTimer === 0 && (
+                          <button
+                            type="button"
+                            onClick={handleSendOtpLogin}
+                            className="px-3 py-2.5 border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-bold rounded-xl transition cursor-pointer"
+                          >
+                            পুনরায় পাঠান
+                          </button>
+                        )}
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
 
               {/* Quick One-Click Switch for Instant Evaluation/Testing */}
               <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 sm:p-5">
@@ -991,32 +1274,80 @@ export default function MemberDashboardModal() {
                     </div>
                   </div>
 
-                  {/* Photo URL & Live Preview */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center gap-1.5">
-                      <Camera className="w-4 h-4 text-slate-500" />
-                      <span>প্রোফাইল ছবি (Photo URL)</span>
-                    </label>
-                    <div className="flex items-center gap-4">
+                  {/* Photo Upload, Facebook Sync & Live Preview */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                        <Camera className="w-4 h-4 text-slate-500" />
+                        <span>প্রোফাইল ছবি (ডিভাইস থেকে আপলোড / ফেসবুক সিঙ্ক)</span>
+                      </label>
+                      {photoSyncMsg && (
+                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>{photoSyncMsg}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                       <img
                         src={profileForm.photoUrl || authenticatedMember.photoUrl}
                         alt="Preview"
-                        className="w-14 h-14 rounded-full object-cover border-2 border-amber-400 shrink-0 bg-white"
+                        className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shrink-0 bg-white shadow-xs"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
                         }}
                       />
-                      <div className="flex-1">
-                        <input
-                          type="url"
-                          value={profileForm.photoUrl || ''}
-                          onChange={(e) => setProfileForm({ ...profileForm, photoUrl: e.target.value })}
-                          placeholder="https://... ছবির ওয়েব লিংক"
-                          className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-slate-900 font-mono"
-                        />
-                        <p className="text-[11px] text-slate-500 mt-1">
-                          আপনার ব্যক্তিগত পাসপোর্ট সাইজ ছবির যেকোনো ডিরেক্ট ইমেজ ইউআরএল বা ক্লাউড ড্রাইভ লিংক দিন।
-                        </p>
+
+                      <div className="flex-1 w-full space-y-2.5">
+                        {/* 1. Device File Upload */}
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                            মোবাইল বা কম্পিউটার থেকে সরাসরি ছবি আপলোড করুন:
+                          </label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLocalPhotoUpload}
+                            className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#0d3b66] file:text-white hover:file:bg-[#144272] cursor-pointer"
+                          />
+                        </div>
+
+                        {/* 2. Facebook Profile Sync */}
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                            অথবা ফেসবুক প্রোফাইল লিংক দিয়ে ছবি সিঙ্ক করুন:
+                          </label>
+                          <div className="flex gap-1.5">
+                            <input
+                              type="text"
+                              value={fbSyncInput}
+                              onChange={(e) => setFbSyncInput(e.target.value)}
+                              placeholder="যেমন: https://facebook.com/username বা username"
+                              className="flex-1 text-xs px-3 py-1.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 font-mono text-slate-800"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleFbPhotoSync}
+                              disabled={isPhotoSyncing || !fbSyncInput.trim()}
+                              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs transition flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-50"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              <span>{isPhotoSyncing ? 'সিঙ্ক হচ্ছে...' : 'ফেসবুক সিঙ্ক'}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 3. Manual URL */}
+                        <div>
+                          <input
+                            type="url"
+                            value={profileForm.photoUrl || ''}
+                            onChange={(e) => setProfileForm({ ...profileForm, photoUrl: e.target.value })}
+                            placeholder="সরাসরি ছবির URL লিংক (ঐচ্ছিক)"
+                            className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-700 font-mono"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>

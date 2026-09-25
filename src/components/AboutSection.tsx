@@ -1,5 +1,6 @@
 import { usePressClub } from '../context/PressClubContext';
 import { TIMELINE_EVENTS } from '../data/pressClubData';
+import SectionActionToolbar from './SectionActionToolbar';
 import { 
   Building2, 
   CheckCircle, 
@@ -42,11 +43,14 @@ export default function AboutSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-amber-950 bg-amber-100 border border-amber-300 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-            ঐতিহ্য ও পথচলা
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0d3b66] mt-3 font-serif">
+        <div className="text-center max-w-3xl mx-auto mb-16 relative">
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <span className="text-amber-950 bg-amber-100 border border-amber-300 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+              ঐতিহ্য ও পথচলা
+            </span>
+            <SectionActionToolbar sectionId="about" sectionTitle="আমাদের পরিচিতি ও ইতিহাস" />
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0d3b66] mt-1 font-serif">
             {clubInfo.nameBangla}র ইতিহাস ও লক্ষ্য
           </h2>
           <p className="text-slate-600 mt-3 text-base">

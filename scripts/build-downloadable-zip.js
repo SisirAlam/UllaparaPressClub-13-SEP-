@@ -99,7 +99,7 @@ Theme URI: https://ullaparapressclub.org
 Author: Ullapara Press Club ICT Team
 Author URI: https://ullaparapressclub.org
 Description: অফিসিয়াল উল্লাপাড়া প্রেসক্লাব আধুনিক ডাইনামিক ওয়েবসাইট ও মিডিয়া পোর্টাল থিম। কোনো কনফিগারেশন ছাড়াই ওয়ার্ডপ্রেসে ১-ক্লিকে ইনস্টল ও চালু করুন।
-Version: 1.0.0
+Version: 2.0.0
 Tested up to: 6.7
 Requires at least: 5.6
 Requires PHP: 7.4

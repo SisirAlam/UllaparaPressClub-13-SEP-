@@ -22,47 +22,189 @@ export default function WebsiteExportModal() {
   const { isExportModalOpen, setIsExportModalOpen, setIsAndroidModalOpen, clubInfo } = usePressClub();
   const [downloadingWp, setDownloadingWp] = useState(false);
   const [downloadedWp, setDownloadedWp] = useState(false);
+  const [wpProgress, setWpProgress] = useState<string>('');
+  
   const [downloadingZip, setDownloadingZip] = useState(false);
   const [downloadedZip, setDownloadedZip] = useState(false);
+  const [zipProgress, setZipProgress] = useState<string>('');
+
   const [downloadingHtml, setDownloadingHtml] = useState(false);
   const [downloadedHtml, setDownloadedHtml] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   if (!isExportModalOpen) return null;
 
-  const handleDownloadWpTheme = () => {
-    setDownloadingWp(true);
-    const link = document.createElement('a');
-    link.href = '/ullapara-pressclub-wp-theme.zip';
-    link.download = 'ullapara-pressclub-wp-theme.zip';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Stream-based Blob download to guarantee full binary file download without HTML interception
+  const handleDownloadWpTheme = async () => {
+    try {
+      setDownloadingWp(true);
+      setDownloadError(null);
+      setWpProgress('সার্ভার থেকে ফাইল আনা হচ্ছে...');
 
-    setTimeout(() => {
-      setDownloadingWp(false);
+      const targetUrl = new URL('ullapara-pressclub-wp-theme.zip', window.location.href).href;
+      const response = await fetch(targetUrl, {
+        headers: {
+          'Accept': 'application/zip, application/octet-stream, */*'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`সার্ভার রেসপন্স ত্রুটি: ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('text/html')) {
+        throw new Error('সার্ভার থেকে জিপ ফাইলের পরিবর্তে এইচটিএমএল পেজ এসেছে। বিকল্প ডিরেক্ট লিংক ব্যবহার করুন।');
+      }
+
+      const contentLength = response.headers.get('content-length');
+      const totalBytes = contentLength ? parseInt(contentLength, 10) : 19057923;
+
+      let blob: Blob;
+      if (response.body && window.ReadableStream) {
+        const reader = response.body.getReader();
+        const chunks: Uint8Array[] = [];
+        let receivedBytes = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) {
+            chunks.push(value);
+            receivedBytes += value.length;
+            const percent = totalBytes > 0 ? Math.min(100, Math.round((receivedBytes / totalBytes) * 100)) : 0;
+            const mb = (receivedBytes / (1024 * 1024)).toFixed(1);
+            setWpProgress(`${percent}% (${mb} MB)`);
+          }
+        }
+        blob = new Blob(chunks, { type: 'application/zip' });
+      } else {
+        blob = await response.blob();
+      }
+
+      // Verify that the file is not a small HTML fallback
+      if (blob.size < 500 * 1024) {
+        throw new Error(`ডাউনলোডকৃত ফাইলটি মাত্র ${(blob.size / 1024).toFixed(1)} KB এসেছে, যা পূর্ণাঙ্গ ১৯ MB জিপ ফাইল নয়। নিচে দেওয়া সরাসরি লিংক দিয়ে ডাউনলোড করুন।`);
+      }
+
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = 'ullapara-pressclub-wp-theme.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(blobUrl);
+      }, 10000);
+
       setDownloadedWp(true);
-    }, 1200);
+      setWpProgress(`সম্পন্ন! (${(blob.size / (1024 * 1024)).toFixed(1)} MB)`);
+    } catch (err: any) {
+      console.warn('WP theme blob download warning:', err);
+      setDownloadError(err?.message || 'থিম ডাউনলোডে সমস্যা হয়েছে। বিকল্প লিংকে ক্লিক করুন।');
+      
+      // Fallback direct anchor click
+      const fallbackLink = document.createElement('a');
+      fallbackLink.href = 'ullapara-pressclub-wp-theme.zip';
+      fallbackLink.download = 'ullapara-pressclub-wp-theme.zip';
+      fallbackLink.target = '_blank';
+      fallbackLink.rel = 'noopener noreferrer';
+      document.body.appendChild(fallbackLink);
+      fallbackLink.click();
+      document.body.removeChild(fallbackLink);
+    } finally {
+      setDownloadingWp(false);
+    }
   };
 
-  const handleDownloadZip = () => {
-    setDownloadingZip(true);
-    const link = document.createElement('a');
-    link.href = '/ullapara-pressclub-website.zip';
-    link.download = 'ullapara-pressclub-website.zip';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownloadZip = async () => {
+    try {
+      setDownloadingZip(true);
+      setDownloadError(null);
+      setZipProgress('সার্ভার থেকে ফাইল আনা হচ্ছে...');
 
-    setTimeout(() => {
-      setDownloadingZip(false);
+      const targetUrl = new URL('ullapara-pressclub-website.zip', window.location.href).href;
+      const response = await fetch(targetUrl, {
+        headers: {
+          'Accept': 'application/zip, application/octet-stream, */*'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`সার্ভার রেসপন্স ত্রুটি: ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('text/html')) {
+        throw new Error('সার্ভার থেকে জিপ ফাইলের পরিবর্তে এইচটিএমএল পেজ এসেছে। বিকল্প ডিরেক্ট লিংক ব্যবহার করুন।');
+      }
+
+      const contentLength = response.headers.get('content-length');
+      const totalBytes = contentLength ? parseInt(contentLength, 10) : 22000000;
+
+      let blob: Blob;
+      if (response.body && window.ReadableStream) {
+        const reader = response.body.getReader();
+        const chunks: Uint8Array[] = [];
+        let receivedBytes = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) {
+            chunks.push(value);
+            receivedBytes += value.length;
+            const percent = totalBytes > 0 ? Math.min(100, Math.round((receivedBytes / totalBytes) * 100)) : 0;
+            const mb = (receivedBytes / (1024 * 1024)).toFixed(1);
+            setZipProgress(`${percent}% (${mb} MB)`);
+          }
+        }
+        blob = new Blob(chunks, { type: 'application/zip' });
+      } else {
+        blob = await response.blob();
+      }
+
+      if (blob.size < 500 * 1024) {
+        throw new Error(`ডাউনলোডকৃত ফাইলটি মাত্র ${(blob.size / 1024).toFixed(1)} KB এসেছে, যা পূর্ণাঙ্গ ২১ MB জিপ ফাইল নয়। নিচে দেওয়া সরাসরি লিংক দিয়ে চেষ্টা করুন।`);
+      }
+
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = 'ullapara-pressclub-website.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(blobUrl);
+      }, 10000);
+
       setDownloadedZip(true);
-    }, 1200);
+      setZipProgress(`সম্পন্ন! (${(blob.size / (1024 * 1024)).toFixed(1)} MB)`);
+    } catch (err: any) {
+      console.warn('Website zip blob download warning:', err);
+      setDownloadError(err?.message || 'জিপ ডাউনলোডে সমস্যা হয়েছে। বিকল্প লিংকে ক্লিক করুন।');
+
+      const fallbackLink = document.createElement('a');
+      fallbackLink.href = 'ullapara-pressclub-website.zip';
+      fallbackLink.download = 'ullapara-pressclub-website.zip';
+      fallbackLink.target = '_blank';
+      fallbackLink.rel = 'noopener noreferrer';
+      document.body.appendChild(fallbackLink);
+      fallbackLink.click();
+      document.body.removeChild(fallbackLink);
+    } finally {
+      setDownloadingZip(false);
+    }
   };
 
   const handleDownloadHtml = () => {
     setDownloadingHtml(true);
     const link = document.createElement('a');
-    link.href = '/index-download.html';
+    link.href = 'index-download.html';
     link.download = 'index.html';
     document.body.appendChild(link);
     link.click();
@@ -111,6 +253,39 @@ export default function WebsiteExportModal() {
 
         {/* Content Options */}
         <div className="p-6 sm:p-7 space-y-6">
+
+          {/* Download Error Banner if any */}
+          {downloadError && (
+            <div className="p-4 bg-amber-50 border-2 border-amber-400 rounded-2xl flex items-start gap-3 text-xs text-amber-950 animate-in fade-in">
+              <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-bold block">ডাউনলোড সংক্রান্ত তথ্য:</span>
+                <p className="leading-relaxed">{downloadError}</p>
+                <div className="pt-1.5 flex flex-wrap gap-2">
+                  <a
+                    href="ullapara-pressclub-wp-theme.zip"
+                    download="ullapara-pressclub-wp-theme.zip"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-blue-700 text-white font-bold rounded-lg hover:bg-blue-800 transition"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>WP Theme সরাসরি ডাউনলোড</span>
+                  </a>
+                  <a
+                    href="ullapara-pressclub-website.zip"
+                    download="ullapara-pressclub-website.zip"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-[#0d3b66] text-white font-bold rounded-lg hover:bg-slate-800 transition"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Website ZIP সরাসরি ডাউনলোড</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Option 1: One-Click WordPress Theme (Primary Highlight) */}
           <div className="p-5 sm:p-6 rounded-2xl border-2 border-blue-600 bg-blue-50/50 relative shadow-sm hover:shadow-md transition">
@@ -135,17 +310,20 @@ export default function WebsiteExportModal() {
                     <span className="bg-white border border-blue-200 px-2 py-0.5 rounded-md font-mono text-blue-900 font-semibold">
                       ullapara-pressclub-wp-theme.zip
                     </span>
+                    <span className="bg-amber-100 text-amber-950 font-bold px-2 py-0.5 rounded-md border border-amber-300">
+                      থিম সাইজ: ~১৯ মেগাবাইট (19 MB)
+                    </span>
                     <span className="bg-blue-100 text-blue-900 px-2 py-0.5 rounded-md font-semibold">
-                      WordPress 5.0 - 6.7+ রেডি
+                      ভার্সন: ২.০ (v2.0)
                     </span>
                     <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-md font-semibold">
-                      প্লাগিন নষ্ট হবে না
+                      WordPress 5.0 - 6.7+ রেডি
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="shrink-0 sm:self-center">
+              <div className="shrink-0 sm:self-center flex flex-col items-center">
                 <button
                   onClick={handleDownloadWpTheme}
                   disabled={downloadingWp}
@@ -154,7 +332,7 @@ export default function WebsiteExportModal() {
                   {downloadingWp ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>ডাউনলোড হচ্ছে...</span>
+                      <span>{wpProgress ? `ডাউনলোড হচ্ছে: ${wpProgress}` : 'ডাউনলোড হচ্ছে...'}</span>
                     </>
                   ) : downloadedWp ? (
                     <>
@@ -164,10 +342,27 @@ export default function WebsiteExportModal() {
                   ) : (
                     <>
                       <Download className="w-4 h-4 text-amber-300" />
-                      <span>ওয়ার্ডপ্রেস থিম নামান</span>
+                      <span>ওয়ার্ডপ্রেস থিম নামান (১৯ MB)</span>
                     </>
                   )}
                 </button>
+
+                {wpProgress && (
+                  <span className="text-[11px] text-blue-800 font-medium mt-1 font-mono">
+                    {wpProgress}
+                  </span>
+                )}
+
+                <a
+                  href="ullapara-pressclub-wp-theme.zip"
+                  download="ullapara-pressclub-wp-theme.zip"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-blue-700 underline flex items-center justify-center gap-1 mt-1.5 hover:text-blue-900 font-semibold"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>বিকল্প সরাসরি লিংক</span>
+                </a>
               </div>
             </div>
           </div>
@@ -195,13 +390,16 @@ export default function WebsiteExportModal() {
                       ফাইলের নাম: ullapara-pressclub-website.zip
                     </span>
                     <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-semibold">
-                      সাইজ: ~১৩.৬ মেগাবাইট
+                      সাইজ: ~২১ মেগাবাইট (21 MB)
+                    </span>
+                    <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded-md font-semibold">
+                      ভার্সন ২.০ (v2.0)
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="shrink-0 sm:self-center">
+              <div className="shrink-0 sm:self-center flex flex-col items-center">
                 <button
                   onClick={handleDownloadZip}
                   disabled={downloadingZip}
@@ -210,7 +408,7 @@ export default function WebsiteExportModal() {
                   {downloadingZip ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>ডাউনলোড হচ্ছে...</span>
+                      <span>{zipProgress ? `ডাউনলোড হচ্ছে: ${zipProgress}` : 'ডাউনলোড হচ্ছে...'}</span>
                     </>
                   ) : downloadedZip ? (
                     <>
@@ -220,10 +418,27 @@ export default function WebsiteExportModal() {
                   ) : (
                     <>
                       <Download className="w-4 h-4 text-amber-400" />
-                      <span>জিপ ফাইল নামান</span>
+                      <span>জিপ ফাইল নামান (২১ MB)</span>
                     </>
                   )}
                 </button>
+
+                {zipProgress && (
+                  <span className="text-[11px] text-slate-700 font-medium mt-1 font-mono">
+                    {zipProgress}
+                  </span>
+                )}
+
+                <a
+                  href="ullapara-pressclub-website.zip"
+                  download="ullapara-pressclub-website.zip"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-amber-900 underline flex items-center justify-center gap-1 mt-1.5 hover:text-amber-950 font-semibold"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>বিকল্প সরাসরি লিংক</span>
+                </a>
               </div>
             </div>
           </div>

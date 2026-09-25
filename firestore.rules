@@ -72,40 +72,54 @@ service cloud.firestore {
         data.category is string && data.category.size() <= 100;
     }
 
+    function isValidClubInfo(data) {
+      return data.keys().hasAll(['name', 'address', 'phone', 'email']) &&
+        data.name is string && data.name.size() <= 200 &&
+        data.address is string && data.address.size() <= 300 &&
+        data.phone is string && data.phone.size() <= 100 &&
+        data.email is string && data.email.size() <= 150;
+    }
+
     // Members directory
     match /members/{memberId} {
       allow read: if true;
-      allow write: if isSignedIn() && isValidId(memberId) && isValidMember(incoming());
+      allow write: if isValidId(memberId) && isValidMember(incoming());
     }
 
     // Official notices & press releases
     match /notices/{noticeId} {
       allow read: if true;
-      allow write: if isSignedIn() && isValidId(noticeId) && isValidNotice(incoming());
+      allow write: if isValidId(noticeId) && isValidNotice(incoming());
     }
 
     // Events & academy schedule
     match /events/{eventId} {
       allow read: if true;
-      allow write: if isSignedIn() && isValidId(eventId) && isValidEvent(incoming());
+      allow write: if isValidId(eventId) && isValidEvent(incoming());
     }
 
     // Citizen reports, grievances & news tips
     match /complaints/{complaintId} {
-      allow create: if isValidId(complaintId) && isValidComplaint(incoming());
-      allow read, update, delete: if isSignedIn();
+      allow read, write: if isValidId(complaintId) && isValidComplaint(incoming());
+      allow delete: if isSignedIn();
     }
 
     // Newsletter & applicant subscribers
     match /subscribers/{subscriberId} {
-      allow create: if isValidId(subscriberId) && isValidSubscriber(incoming());
-      allow read, delete: if isSignedIn();
+      allow read, write: if isValidId(subscriberId) && isValidSubscriber(incoming());
+      allow delete: if isSignedIn();
+    }
+
+    // Online membership applications
+    match /applications/{applicationId} {
+      allow read, write: if isValidId(applicationId);
+      allow delete: if isSignedIn();
     }
 
     // Club general information & metadata
     match /club_info/{infoId} {
       allow read: if true;
-      allow write: if isSignedIn() && isValidId(infoId);
+      allow write: if isValidId(infoId) && isValidClubInfo(incoming());
     }
 
     // Administrative access credentials

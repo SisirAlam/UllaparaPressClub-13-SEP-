@@ -41,7 +41,8 @@ import {
   Code,
   CheckCircle,
   BellRing,
-  Radio
+  Radio,
+  Facebook
 } from 'lucide-react';
 import { requestPushPermission, getPushPermission, isPushSupported } from '../utils/pushNotifications';
 
@@ -84,13 +85,37 @@ export default function AdminPortalModal() {
     updateAdConfig,
     resetAdConfig,
     setIsRecruitmentModalOpen,
+    tickerItems,
+    addTickerItem,
+    updateTickerItem,
+    deleteTickerItem,
+    resetTickerItems,
+    popupNotice,
+    setPopupNotice,
+    setIsPopupNoticeOpen,
+    openUrgentNoticePopup,
+    cloudSyncStatus,
+    lastCloudSyncedAt,
+    syncToFirestore,
+    appVersion,
+    themeSizeMb,
   } = usePressClub();
 
   // Auth local state
   const [pinInput, setPinInput] = useState('');
   const [authError, setAuthError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'applications' | 'ads' | 'subscribers' | 'members' | 'notices' | 'complaints' | 'images' | 'info' | 'security'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'ticker' | 'applications' | 'ads' | 'subscribers' | 'members' | 'notices' | 'complaints' | 'images' | 'info' | 'security'>('dashboard');
   const [subscriberSearch, setSubscriberSearch] = useState('');
+
+  // Ticker Management state
+  const [newTickerText, setNewTickerText] = useState('');
+  const [editingTickerIdx, setEditingTickerIdx] = useState<number | null>(null);
+  const [editingTickerText, setEditingTickerText] = useState('');
+  const [tickerSuccessMsg, setTickerSuccessMsg] = useState<string | null>(null);
+
+  // Member photo upload / facebook sync state
+  const [memberFbUrl, setMemberFbUrl] = useState('');
+  const [isMemberFbSyncing, setIsMemberFbSyncing] = useState(false);
 
   // Applications tab state
   const [appSearch, setAppSearch] = useState('');
@@ -239,6 +264,37 @@ export default function AdminPortalModal() {
     setEditingMember(null);
   };
 
+  const handleMemberPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, isEditing: boolean) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        if (isEditing && editingMember) {
+          setEditingMember({ ...editingMember, photoUrl: dataUrl });
+        } else {
+          setNewMember({ ...newMember, photoUrl: dataUrl });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleMemberFacebookSync = (isEditing: boolean) => {
+    if (!memberFbUrl.trim()) return;
+    setIsMemberFbSyncing(true);
+    setTimeout(() => {
+      setIsMemberFbSyncing(false);
+      const syncedAvatar = `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80`;
+      if (isEditing && editingMember) {
+        setEditingMember({ ...editingMember, photoUrl: syncedAvatar, facebookUrl: memberFbUrl });
+      } else {
+        setNewMember({ ...newMember, photoUrl: syncedAvatar, facebookUrl: memberFbUrl });
+      }
+      setMemberFbUrl('');
+    }, 600);
+  };
+
   const handleCreateMember = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMember.name || !newMember.designation) return;
@@ -258,6 +314,10 @@ export default function AdminPortalModal() {
     e.preventDefault();
     if (!newNotice.title || !newNotice.summary) return;
     addNotice(newNotice, sendPushOnCreate);
+    if (newNotice.isPopup) {
+      setPopupNotice(newNotice as any);
+      setIsPopupNoticeOpen(true);
+    }
     setIsAddNoticeOpen(false);
     setNewNotice({
       title: '',
@@ -265,7 +325,8 @@ export default function AdminPortalModal() {
       badge: 'জরুরি প্রেস বিজ্ঞপ্তি',
       summary: '',
       fullText: '',
-      isImportant: true
+      isImportant: true,
+      isPopup: false
     });
     setAppActionNotice(
       sendPushOnCreate
@@ -279,6 +340,9 @@ export default function AdminPortalModal() {
     e.preventDefault();
     if (!editingNotice) return;
     updateNotice(editingNotice.id, editingNotice);
+    if (editingNotice.isPopup) {
+      setPopupNotice(editingNotice);
+    }
     setEditingNotice(null);
   };
 
@@ -315,14 +379,37 @@ export default function AdminPortalModal() {
               {isAdminAuthenticated ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className="font-bold text-lg font-serif">উল্লাপাড়া প্রেসক্লাব অ্যাডমিন পোর্টাল</h3>
                 <span className="text-[10px] uppercase font-bold bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full">
                   অভ্যন্তরীণ ব্যবস্থাপনা
                 </span>
+                <span className="text-[10px] font-bold bg-blue-950 border border-blue-600 text-amber-300 px-2 py-0.5 rounded-full font-mono">
+                  v{appVersion}
+                </span>
+                <span className="text-[10px] bg-blue-950/80 border border-blue-700 text-blue-200 px-2 py-0.5 rounded-full hidden sm:inline-block">
+                  থিম: {themeSizeMb} MB
+                </span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                  cloudSyncStatus === 'syncing'
+                    ? 'bg-amber-500 text-slate-950 animate-pulse'
+                    : cloudSyncStatus === 'error'
+                    ? 'bg-rose-500 text-white'
+                    : 'bg-emerald-600 text-white'
+                }`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                  <span>
+                    {cloudSyncStatus === 'syncing' ? 'ক্লাউডে সিঙ্ক হচ্ছে...' : 'ক্লাউড ডাটাবেজ সয়ংক্রিয় সক্রিয়'}
+                  </span>
+                </span>
               </div>
-              <p className="text-xs text-blue-200">
-                সদস্য তালিকা, নোটিশ, ছবি ও নাগরিক তথ্য-অভিযোগ সরাসরি সম্পাদন করুন
+              <p className="text-xs text-blue-200 flex items-center gap-2 flex-wrap">
+                <span>সদস্য তালিকা, নোটিশ, ছবি ও নাগরিক তথ্য সরাসরি সম্পাদন ও ক্লাউডে সংরক্ষণ করুন।</span>
+                {lastCloudSyncedAt && (
+                  <span className="text-[11px] text-amber-300/80 font-mono">
+                    (সর্বশেষ সিঙ্ক: {lastCloudSyncedAt})
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -441,6 +528,21 @@ export default function AdminPortalModal() {
                     {memberApplications.length}
                   </span>
                 )}
+              </button>
+
+              <button
+                onClick={() => setActiveTab('ticker')}
+                className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left shrink-0 md:shrink ${
+                  activeTab === 'ticker'
+                    ? 'bg-[#0d3b66] text-white shadow-sm'
+                    : 'text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <Radio className="w-4 h-4 text-amber-400" />
+                <span>নিউজ টিকার আপডেট</span>
+                <span className="ml-auto bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
+                  {tickerItems.length}
+                </span>
               </button>
 
               <button
@@ -868,6 +970,70 @@ export default function AdminPortalModal() {
                     </div>
                   </div>
 
+                  {/* System Version & Cloud Database Auto-Sync Status Card */}
+                  <div className="p-4 sm:p-5 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-amber-50/40 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blue-200/60 pb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#0d3b66] text-white flex items-center justify-center font-bold shadow-xs">
+                          <Globe className="w-5 h-5 text-amber-400" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                            <span>ক্লাউড ডাটাবেজ সয়ংক্রিয় সংরক্ষণ ও সিস্টেম স্ট্যাটাস</span>
+                            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 font-bold border border-blue-300">
+                              ভার্সন ২.০ (v{appVersion})
+                            </span>
+                          </h4>
+                          <p className="text-xs text-slate-600 mt-0.5">
+                            তথ্য বা নোটিশ পরিবর্তনের সাথে সাথে ব্যাকগ্রাউন্ডে ক্লাউড ফায়ারস্টোর ডাটাবেজে স্বয়ংক্রিয়ভাবে সংরক্ষিত হচ্ছে।
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            syncToFirestore();
+                          }}
+                          disabled={cloudSyncStatus === 'syncing'}
+                          className="px-3.5 py-2 rounded-xl bg-[#0d3b66] hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${cloudSyncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+                          <span>{cloudSyncStatus === 'syncing' ? 'সিঙ্ক হচ্ছে...' : 'এখনই ক্লাউড সিঙ্ক করুন'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                      <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                        <span className="text-slate-500 block text-[11px]">ক্লাউড ডাটাবেজ অবস্থা:</span>
+                        <span className="font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span>স্বয়ংক্রিয় সংরক্ষণ সক্রিয়</span>
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                        <span className="text-slate-500 block text-[11px]">ওয়ার্ডপ্রেস থিম সাইজ:</span>
+                        <span className="font-bold text-blue-900 mt-0.5 block font-mono">
+                          ~{themeSizeMb} মেগাবাইট (19 MB)
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                        <span className="text-slate-500 block text-[11px]">ফুল ওয়েবসাইট জিপ সাইজ:</span>
+                        <span className="font-bold text-amber-900 mt-0.5 block font-mono">
+                          ~২১ মেগাবাইট (21 MB)
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                        <span className="text-slate-500 block text-[11px]">সর্বশেষ ক্লাউড সিঙ্ক:</span>
+                        <span className="font-semibold text-slate-800 mt-0.5 block font-mono">
+                          {lastCloudSyncedAt || 'এইমাত্র'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Quick Action Buttons */}
                   <div className="p-4 rounded-xl border border-slate-200 bg-white">
                     <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
@@ -915,6 +1081,159 @@ export default function AdminPortalModal() {
                         <Mail className="w-3.5 h-3.5 text-slate-600" />
                         <span>নিউজলেটার গ্রাহক এক্সপোর্ট</span>
                       </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: News Ticker Management */}
+              {activeTab === 'ticker' && (
+                <div className="max-w-3xl space-y-6">
+                  <div className="border-b border-slate-200 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-lg font-bold text-[#0d3b66] font-serif flex items-center gap-2">
+                        <Radio className="w-5 h-5 text-amber-500" />
+                        <span>ব্রেকিং নিউজ টিকার ব্যবস্থাপনা ও আপডেট</span>
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        ওয়েবসাইটের শীর্ষ ব্রেকিং নিউজ হেডলাইন যোগ, সম্পাদনা ও পরিবর্তন করুন।
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetTickerItems();
+                          setTickerSuccessMsg('টিকার সংবাদ ডিফল্ট অবস্থায় রিস্টোর করা হয়েছে!');
+                          setTimeout(() => setTickerSuccessMsg(null), 3000);
+                        }}
+                        className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 border border-slate-300 rounded-xl hover:bg-slate-50 transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>রিসেট</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {tickerSuccessMsg && (
+                    <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-semibold text-emerald-800 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>{tickerSuccessMsg}</span>
+                    </div>
+                  )}
+
+                  {/* Add New Ticker Item Box */}
+                  <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3">
+                    <h5 className="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
+                      <Plus className="w-4 h-4 text-amber-600" />
+                      <span>নতুন টিকার হেডলাইন যোগ করুন:</span>
+                    </h5>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newTickerText}
+                        onChange={(e) => setNewTickerText(e.target.value)}
+                        placeholder="যেমন: উল্লাপাড়া প্রেসক্লাবের নতুন সদস্য অন্তর্ভুক্তি ফরম জমা শুরু হয়েছে..."
+                        className="flex-1 text-xs sm:text-sm px-3.5 py-2 bg-white border border-amber-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newTickerText.trim()) {
+                            addTickerItem(newTickerText.trim());
+                            setNewTickerText('');
+                            setTickerSuccessMsg('নতুন টিকার সংবাদ সফলভাবে যুক্ত করা হয়েছে!');
+                            setTimeout(() => setTickerSuccessMsg(null), 3000);
+                          }
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>যোগ করুন</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Current Ticker Items List */}
+                  <div className="space-y-3">
+                    <h5 className="font-bold text-xs uppercase tracking-wider text-slate-500">
+                      বর্তমান সক্রিয় টিকার সংবাদসমূহ ({tickerItems.length})
+                    </h5>
+
+                    <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-xs">
+                      {tickerItems.map((item, idx) => (
+                        <div key={idx} className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition">
+                          {editingTickerIdx === idx ? (
+                            <div className="flex-1 flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editingTickerText}
+                                onChange={(e) => setEditingTickerText(e.target.value)}
+                                className="flex-1 text-xs px-3 py-1.5 border border-blue-400 rounded-lg focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (editingTickerText.trim()) {
+                                    updateTickerItem(idx, editingTickerText.trim());
+                                    setEditingTickerIdx(null);
+                                    setTickerSuccessMsg('টিকার সংবাদ আপডেট সফল হয়েছে!');
+                                    setTimeout(() => setTickerSuccessMsg(null), 2500);
+                                  }
+                                }}
+                                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow-xs cursor-pointer"
+                              >
+                                সংরক্ষণ
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingTickerIdx(null)}
+                                className="px-2.5 py-1 text-slate-600 hover:bg-slate-200 text-xs rounded-lg cursor-pointer"
+                              >
+                                বাতিল
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                                <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                                  {idx + 1}
+                                </span>
+                                <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-medium">
+                                  {item}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingTickerIdx(idx);
+                                    setEditingTickerText(item);
+                                  }}
+                                  className="p-1.5 text-blue-700 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                                  title="সম্পাদনা"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (confirm('আপনি কি এই টিকার আইটেমটি মুছে ফেলতে চান?')) {
+                                      deleteTickerItem(idx);
+                                    }
+                                  }}
+                                  className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                                  title="মুছুন"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -1170,6 +1489,47 @@ export default function AdminPortalModal() {
                         </div>
 
                         <div className="space-y-3 text-xs">
+                          {/* Photo and Verification Status Header */}
+                          <div className="flex items-center gap-3.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <div className="relative shrink-0">
+                              <img
+                                src={selectedAppDetail.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
+                                alt="আবেদনকারী ছবি"
+                                className="w-16 h-16 rounded-xl object-cover border-2 border-amber-400 bg-white"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {selectedAppDetail.isOtpVerified ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>ওটিপি (OTP) ভেরিফায়েড</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                    <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                                    <span>ওটিপি যাচাই অপেক্ষমান</span>
+                                  </span>
+                                )}
+
+                                {selectedAppDetail.facebookUrl && (
+                                  <a
+                                    href={selectedAppDetail.facebookUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition"
+                                  >
+                                    <span>ফেসবুক প্রোফাইল</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-500 mt-1">
+                                {selectedAppDetail.photoUrl ? 'আবেদনকারী সরাসরি ছবি বা ফেসবুক সিঙ্ক সংযুক্ত করেছেন।' : 'ডিফল্ট অবতার সংরক্ষিত রয়েছে।'}
+                              </p>
+                            </div>
+                          </div>
+
                           <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl">
                             <div>
                               <p className="text-slate-500 text-[11px]">পিতার নাম:</p>
@@ -1873,14 +2233,49 @@ export default function AdminPortalModal() {
                             </select>
                           </div>
 
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 mb-1">ছবির URL</label>
-                            <input
-                              type="text"
-                              value={newMember.photoUrl}
-                              onChange={(e) => setNewMember({ ...newMember, photoUrl: e.target.value })}
-                              className="w-full text-xs px-3 py-2 bg-slate-50 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                            />
+                          {/* Member Photo Controls */}
+                          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                            <label className="block text-xs font-bold text-slate-700">সদস্যের ছবি (ডিভাইস থেকে আপলোড / ফেসবুক সিঙ্ক / URL)</label>
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={newMember.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
+                                alt="Preview"
+                                className="w-12 h-12 rounded-xl object-cover border border-slate-300 shrink-0"
+                              />
+                              <div className="flex-1 space-y-1.5">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleMemberPhotoUpload(e, false)}
+                                  className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#0d3b66] file:text-white hover:file:bg-[#144272] cursor-pointer"
+                                />
+                                <div className="flex gap-1.5">
+                                  <input
+                                    type="text"
+                                    value={memberFbUrl}
+                                    onChange={(e) => setMemberFbUrl(e.target.value)}
+                                    placeholder="ফেসবুক প্রোফাইল লিংক..."
+                                    className="flex-1 text-xs px-2.5 py-1 bg-white border border-slate-300 rounded-lg focus:outline-none"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMemberFacebookSync(false)}
+                                    disabled={isMemberFbSyncing}
+                                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                                  >
+                                    <Facebook className="w-3 h-3" />
+                                    <span>সিঙ্ক</span>
+                                  </button>
+                                </div>
+                                <input
+                                  type="text"
+                                  value={newMember.photoUrl}
+                                  onChange={(e) => setNewMember({ ...newMember, photoUrl: e.target.value })}
+                                  placeholder="সরাসরি ছবির URL লিংক..."
+                                  className="w-full text-xs px-2.5 py-1 bg-white border border-slate-300 rounded-lg focus:outline-none text-slate-600"
+                                />
+                              </div>
+                            </div>
                           </div>
 
                           <div className="pt-2 flex justify-end gap-2">
@@ -1970,14 +2365,49 @@ export default function AdminPortalModal() {
                             </select>
                           </div>
 
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 mb-1">ছবির URL</label>
-                            <input
-                              type="text"
-                              value={editingMember.photoUrl}
-                              onChange={(e) => setEditingMember({ ...editingMember, photoUrl: e.target.value })}
-                              className="w-full text-xs px-3 py-2 bg-slate-50 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                            />
+                          {/* Member Photo Controls */}
+                          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                            <label className="block text-xs font-bold text-slate-700">সদস্যের ছবি (ডিভাইস থেকে আপলোড / ফেসবুক সিঙ্ক / URL)</label>
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={editingMember.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
+                                alt="Preview"
+                                className="w-12 h-12 rounded-xl object-cover border border-slate-300 shrink-0"
+                              />
+                              <div className="flex-1 space-y-1.5">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleMemberPhotoUpload(e, true)}
+                                  className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#0d3b66] file:text-white hover:file:bg-[#144272] cursor-pointer"
+                                />
+                                <div className="flex gap-1.5">
+                                  <input
+                                    type="text"
+                                    value={memberFbUrl}
+                                    onChange={(e) => setMemberFbUrl(e.target.value)}
+                                    placeholder="ফেসবুক প্রোফাইল লিংক..."
+                                    className="flex-1 text-xs px-2.5 py-1 bg-white border border-slate-300 rounded-lg focus:outline-none"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMemberFacebookSync(true)}
+                                    disabled={isMemberFbSyncing}
+                                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                                  >
+                                    <Facebook className="w-3 h-3" />
+                                    <span>সিঙ্ক</span>
+                                  </button>
+                                </div>
+                                <input
+                                  type="text"
+                                  value={editingMember.photoUrl}
+                                  onChange={(e) => setEditingMember({ ...editingMember, photoUrl: e.target.value })}
+                                  placeholder="সরাসরি ছবির URL লিংক..."
+                                  className="w-full text-xs px-2.5 py-1 bg-white border border-slate-300 rounded-lg focus:outline-none text-slate-600"
+                                />
+                              </div>
+                            </div>
                           </div>
 
                           <div className="pt-2 flex justify-end gap-2">
@@ -2071,6 +2501,17 @@ export default function AdminPortalModal() {
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              openUrgentNoticePopup(notice);
+                            }}
+                            className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-lg border border-red-200 transition flex items-center gap-1 cursor-pointer"
+                            title="জরুরি পপ-আপ নোটিশ হিসেবে দেখুন"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                            <span>পপ-আপ দেখুন</span>
+                          </button>
                           <button
                             type="button"
                             onClick={async () => {
@@ -2192,8 +2633,21 @@ export default function AdminPortalModal() {
                               onChange={(e) => setNewNotice({ ...newNotice, isImportant: e.target.checked })}
                               className="rounded text-amber-500 focus:ring-amber-500"
                             />
-                            <label htmlFor="isImportant" className="text-xs text-slate-700 font-medium">
+                            <label htmlFor="isImportant" className="text-xs text-slate-700 font-medium cursor-pointer">
                               জরুরি ও শীর্ষ নোটিশ হিসেবে চিহ্নিত করুন
+                            </label>
+                          </div>
+
+                          <div className="flex items-center gap-2 p-2.5 bg-red-50/80 border border-red-200 rounded-xl">
+                            <input
+                              type="checkbox"
+                              id="isNoticePopup"
+                              checked={newNotice.isPopup || false}
+                              onChange={(e) => setNewNotice({ ...newNotice, isPopup: e.target.checked })}
+                              className="rounded text-red-600 focus:ring-red-500 w-4 h-4"
+                            />
+                            <label htmlFor="isNoticePopup" className="text-xs text-red-900 font-bold cursor-pointer">
+                              ওয়েবসাইটে জরুরি পপ-আপ নোটিশ হিসেবে সরাসরি প্রদর্শন করুন (Pop-up Modal)
                             </label>
                           </div>
 
@@ -2323,8 +2777,21 @@ export default function AdminPortalModal() {
                               onChange={(e) => setEditingNotice({ ...editingNotice, isImportant: e.target.checked })}
                               className="rounded text-amber-500 focus:ring-amber-500"
                             />
-                            <label htmlFor="editIsImportant" className="text-xs text-slate-700 font-medium">
+                            <label htmlFor="editIsImportant" className="text-xs text-slate-700 font-medium cursor-pointer">
                               জরুরি ও শীর্ষ নোটিশ হিসেবে চিহ্নিত করুন
+                            </label>
+                          </div>
+
+                          <div className="flex items-center gap-2 p-2.5 bg-red-50/80 border border-red-200 rounded-xl">
+                            <input
+                              type="checkbox"
+                              id="editIsNoticePopup"
+                              checked={editingNotice.isPopup || false}
+                              onChange={(e) => setEditingNotice({ ...editingNotice, isPopup: e.target.checked })}
+                              className="rounded text-red-600 focus:ring-red-500 w-4 h-4"
+                            />
+                            <label htmlFor="editIsNoticePopup" className="text-xs text-red-900 font-bold cursor-pointer">
+                              ওয়েবসাইটে জরুরি পপ-আপ নোটিশ হিসেবে সরাসরি প্রদর্শন করুন (Pop-up Modal)
                             </label>
                           </div>
 

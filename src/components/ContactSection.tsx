@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { usePressClub } from '../context/PressClubContext';
+import SectionActionToolbar from './SectionActionToolbar';
 import { 
   Mail, 
   Phone, 
@@ -43,11 +44,14 @@ export default function ContactSection() {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-amber-950 bg-amber-100 border border-amber-300 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-xs">
-            <Mail className="w-3.5 h-3.5 text-amber-700" />
-            যোগাযোগ ও অনুসন্ধান
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0d3b66] mt-3 font-serif">
+          <div className="flex items-center justify-center gap-3 mb-3 flex-wrap">
+            <span className="text-amber-950 bg-amber-100 border border-amber-300 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-xs">
+              <Mail className="w-3.5 h-3.5 text-amber-700" />
+              যোগাযোগ ও অনুসন্ধান
+            </span>
+            <SectionActionToolbar sectionId="contact" sectionTitle="যোগাযোগ ও অনুসন্ধান" />
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0d3b66] mt-1 font-serif">
             উল্লাপাড়া প্রেসক্লাবের সাথে যুক্ত হোন
           </h2>
           <p className="text-slate-600 mt-3 text-base">

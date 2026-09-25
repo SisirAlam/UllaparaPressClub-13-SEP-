@@ -18,7 +18,13 @@ import {
   Code2, 
   HelpCircle,
   FileCode2,
-  Share2
+  Share2,
+  Lock,
+  Unlock,
+  Key,
+  AlertTriangle,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface AndroidAppModalProps {
@@ -28,15 +34,40 @@ interface AndroidAppModalProps {
 
 export default function AndroidAppModal({ isOpen, onClose }: AndroidAppModalProps) {
   const { isInstallable, isInstalled, isAndroid, isIOS, install } = usePWAInstall();
-  const { clubInfo, images } = usePressClub();
+  const { clubInfo, images, adminPin, isAdminAuthenticated, setIsAdminOpen } = usePressClub();
 
   const [activeTab, setActiveTab] = useState<'install' | 'apk' | 'features'>('install');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [installSuccess, setInstallSuccess] = useState(false);
 
+  // Security gate states
+  const [enteredPin, setEnteredPin] = useState('');
+  const [pinUnlocked, setPinUnlocked] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinSuccessMsg, setPinSuccessMsg] = useState<string | null>(null);
+  const [showPin, setShowPin] = useState(false);
+
+  const isAuthorized = isAdminAuthenticated || pinUnlocked;
+
   if (!isOpen) return null;
 
+  const handleUnlockWithPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (enteredPin.trim() === adminPin.trim()) {
+      setPinUnlocked(true);
+      setPinError(null);
+      setPinSuccessMsg('সিকিউরিটি পিন সঠিক! অ্যাপ ডাউনলোড ও ইনস্টলেশন অনুমোদিত হয়েছে।');
+      setTimeout(() => setPinSuccessMsg(null), 3500);
+    } else {
+      setPinError('ভুল সিকিউরিটি পিন! সঠিক অ্যাডমিন পিন প্রদান করুন।');
+    }
+  };
+
   const handleInstallClick = async () => {
+    if (!isAuthorized) {
+      setPinError('নিরাপত্তা নীতি: শুধুমাত্র অ্যাডমিন প্যানেল অথবা সঠিক পিন (PIN) প্রদান করে ডাউনলোড আনলক করতে হবে।');
+      return;
+    }
     const success = await install();
     if (success) {
       setInstallSuccess(true);
@@ -45,12 +76,20 @@ export default function AndroidAppModal({ isOpen, onClose }: AndroidAppModalProp
   };
 
   const copyToClipboard = (text: string, id: string) => {
+    if (!isAuthorized) {
+      setPinError('অ্যাডমিন পিন বা অনুমতি ব্যতীত ফাইল বা কোড অ্যাক্সেস সুরক্ষিত।');
+      return;
+    }
     navigator.clipboard.writeText(text);
     setCopiedCode(id);
     setTimeout(() => setCopiedCode(null), 2500);
   };
 
   const downloadAndroidConfigZip = () => {
+    if (!isAuthorized) {
+      setPinError('অ্যাডমিন পিন ব্যতীত ফাইল ডাউনলোড করা যাবে না।');
+      return;
+    }
     // Generate a standalone android package bundle JSON
     const twaManifest = {
       packageId: "org.ullaparapressclub.app",
@@ -63,8 +102,8 @@ export default function AndroidAppModal({ isOpen, onClose }: AndroidAppModalProp
       startUrl: "/",
       iconUrl: "/pwa-512x512.png",
       maskableIconUrl: "/pwa-maskable-512x512.png",
-      appVersion: "1.0.0",
-      appVersionCode: 1,
+      appVersion: "2.0.0",
+      appVersionCode: 2,
       shortcuts: [
         {
           name: "নোটিশ বোর্ড",
@@ -93,6 +132,10 @@ export default function AndroidAppModal({ isOpen, onClose }: AndroidAppModalProp
   };
 
   const downloadAssetLinks = () => {
+    if (!isAuthorized) {
+      setPinError('অ্যাডমিন পিন ব্যতীত AssetLinks ফাইল ডাউনলোড করা যাবে না।');
+      return;
+    }
     const assetlinks = [
       {
         relation: ["delegate_permission/common.handle_all_urls"],
@@ -153,7 +196,7 @@ bubblewrap build`;
                   অ্যান্ড্রয়েড অ্যাপ্লিকেশন
                 </span>
                 <span className="text-xs text-amber-300 font-semibold">
-                  v1.0.0 (WebAPK / TWA)
+                  v2.0 (WebAPK / TWA / PWA)
                 </span>
               </div>
               <h2 className="text-xl sm:text-2xl font-bold font-serif text-white mt-1">
@@ -206,6 +249,99 @@ bubblewrap build`;
         {/* Modal Body */}
         <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto space-y-6">
 
+          {/* Security PIN Gateway Banner */}
+          {!isAuthorized ? (
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-50 to-orange-50 border-2 border-amber-400 shadow-sm space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 shadow-xs">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 text-sm sm:text-base">
+                      অ্যাপ ডাউনলোড ও ইনস্টলেশন সুরক্ষিত (পিন দ্বারা সংরক্ষিত)
+                    </h3>
+                    <span className="px-2 py-0.5 text-[10px] font-extrabold bg-amber-500 text-slate-950 rounded-md uppercase">
+                      লক করা
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    উল্লাপাড়া প্রেসক্লাবের সুরক্ষা নীতি অনুযায়ী <strong>অ্যাডমিন প্যানেল এক্সেস অথবা অনুমোদিত সিকিউরিটি পিন (PIN)</strong> ব্যতীত কেউ মোবাইল অ্যাপ ডাউনলোড বা ইনস্টল করতে পারবে না।
+                  </p>
+                </div>
+              </div>
+
+              {/* PIN Input Form */}
+              <form onSubmit={handleUnlockWithPin} className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <Key className="w-4 h-4" />
+                  </div>
+                  <input
+                    type={showPin ? "text" : "password"}
+                    value={enteredPin}
+                    onChange={(e) => {
+                      setEnteredPin(e.target.value);
+                      if (pinError) setPinError(null);
+                    }}
+                    placeholder="অ্যাডমিন সিকিউরিটি পিন (PIN) লিখুন..."
+                    className="w-full pl-9 pr-10 py-2 rounded-xl border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white text-xs sm:text-sm font-mono text-slate-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPin(!showPin)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                  >
+                    {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0d3b66] to-[#07203d] hover:from-[#144272] hover:to-[#0d3b66] text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  <Unlock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>পিন যাচাই ও আনলক করুন</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    setIsAdminOpen(true);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition shrink-0"
+                >
+                  অ্যাডমিন প্যানেল খুলুন
+                </button>
+              </form>
+
+              {pinError && (
+                <div className="flex items-center gap-1.5 text-xs text-red-600 font-medium pt-1">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{pinError}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 flex items-center justify-between gap-3 text-emerald-900 text-xs sm:text-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-bold">✓ অ্যাডমিন অনুমোদন সক্রিয়: </span>
+                  <span className="text-emerald-800 text-xs">
+                    অ্যাপ ডাউনলোড, ইনস্টলেশন ও সোর্স বান্ডেল অ্যাক্সেস উন্মুক্ত রয়েছে।
+                  </span>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 bg-emerald-200 text-emerald-900 rounded font-bold text-[11px] shrink-0">
+                অনুমোদিত
+              </span>
+            </div>
+          )}
+
           {/* TAB 1: DIRECT INSTALL (PWA / WebAPK) */}
           {activeTab === 'install' && (
             <div className="space-y-6 animate-in fade-in duration-200">
@@ -244,10 +380,14 @@ bubblewrap build`;
                   {isInstallable ? (
                     <button
                       onClick={handleInstallClick}
-                      className="w-full sm:w-auto px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold text-sm shadow-md transition flex items-center justify-center gap-2 shrink-0"
+                      className={`w-full sm:w-auto px-5 py-3 rounded-xl font-bold text-sm shadow-md transition flex items-center justify-center gap-2 shrink-0 ${
+                        isAuthorized
+                          ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white'
+                          : 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                      }`}
                     >
-                      <Download className="w-4 h-4" />
-                      <span>এখনই ইনস্টল করুন</span>
+                      {isAuthorized ? <Download className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                      <span>{isAuthorized ? 'এখনই ইনস্টল করুন' : 'পিন দিয়ে আনলক করে ইনস্টল করুন'}</span>
                     </button>
                   ) : (
                     <div className="text-right">
@@ -375,15 +515,15 @@ bubblewrap build`;
                     onClick={downloadAndroidConfigZip}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold transition shadow-xs"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>TWA Manifest JSON নামান</span>
+                    {isAuthorized ? <Download className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5 text-slate-800" />}
+                    <span>TWA Manifest JSON নামান {!isAuthorized && '(লকড)'}</span>
                   </button>
                   <button
                     onClick={downloadAssetLinks}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-bold transition border border-blue-200"
                   >
-                    <FileCode2 className="w-3.5 h-3.5" />
-                    <span>AssetLinks JSON নামান</span>
+                    {isAuthorized ? <FileCode2 className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5 text-blue-800" />}
+                    <span>AssetLinks JSON নামান {!isAuthorized && '(লকড)'}</span>
                   </button>
                 </div>
               </div>

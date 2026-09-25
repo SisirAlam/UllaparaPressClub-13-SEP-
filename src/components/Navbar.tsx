@@ -112,10 +112,10 @@ export default function Navbar({ onNavigate, activeSection }: NavbarProps) {
               <button
                 onClick={() => setIsExportModalOpen(true)}
                 className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold transition shadow-xs text-[11px] cursor-pointer"
-                title="১-ক্লিকে ইনস্টলযোগ্য ওয়ার্ডপ্রেস থিম (ZIP) ও অফলাইন প্যাকেজ নামান"
+                title="১-ক্লিকে ইনস্টলযোগ্য ওয়ার্ডপ্রেস থিম (১৯ MB, ভার্সন ২.০) নামান"
               >
                 <Download className="w-3 h-3" />
-                <span>ওয়ার্ডপ্রেস থিম (ZIP)</span>
+                <span>ওয়ার্ডপ্রেস থিম (১৯ MB • v২.০)</span>
               </button>
             )}
 

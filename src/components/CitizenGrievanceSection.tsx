@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { usePressClub } from '../context/PressClubContext';
+import SectionActionToolbar from './SectionActionToolbar';
 import { 
   ShieldAlert, 
   Send, 
@@ -112,11 +113,14 @@ export default function CitizenGrievanceSection() {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-12">
-          <span className="text-amber-950 bg-amber-100 border border-amber-300 px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-xs">
-            <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
-            জনস্বার্থ ও নাগরিক সেবা
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0d3b66] mt-3 font-serif">
+          <div className="flex items-center justify-center gap-3 mb-3 flex-wrap">
+            <span className="text-amber-950 bg-amber-100 border border-amber-300 px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-xs">
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
+              জনস্বার্থ ও নাগরিক সেবা
+            </span>
+            <SectionActionToolbar sectionId="complaint" sectionTitle="নাগরিক অভিযোগ ও তথ্য প্রদান সেল" />
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0d3b66] mt-1 font-serif">
             তথ্য ও নাগরিক অভিযোগ সেল
           </h2>
           <p className="text-slate-600 mt-3 text-sm sm:text-base leading-relaxed">

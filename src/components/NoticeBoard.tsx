@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { usePressClub } from '../context/PressClubContext';
 import AdvertisementBanner from './AdvertisementBanner';
 import PrintFriendlyArticleModal from './PrintFriendlyArticleModal';
+import SectionActionToolbar from './SectionActionToolbar';
 import { NoticeItem, NoticeCategory } from '../types';
 import { requestPushPermission, getPushPermission, isPushSupported, sendLocalPushNotification } from '../utils/pushNotifications';
 import { 
@@ -267,11 +268,14 @@ export default function NoticeBoard() {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-10">
-          <span className="text-amber-950 bg-amber-100 border border-amber-300 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-xs">
-            <ClipboardCheck className="w-3.5 h-3.5 text-amber-700" />
-            সাংগঠনিক কার্যক্রম ও বিজ্ঞপ্তি
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0d3b66] mt-3 font-serif">
+          <div className="flex items-center justify-center gap-3 mb-3 flex-wrap">
+            <span className="text-amber-950 bg-amber-100 border border-amber-300 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-xs">
+              <ClipboardCheck className="w-3.5 h-3.5 text-amber-700" />
+              সাংগঠনিক কার্যক্রম ও বিজ্ঞপ্তি
+            </span>
+            <SectionActionToolbar sectionId="notices" sectionTitle="নোটিশ বোর্ড ও সভা" />
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0d3b66] mt-1 font-serif">
             ইভেন্ট ক্যালেন্ডার, সভা ও নোটিশ বোর্ড
           </h2>
           <p className="text-slate-600 mt-3 text-base">

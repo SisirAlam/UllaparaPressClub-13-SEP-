@@ -27,6 +27,7 @@ import AndroidAppModal from './components/AndroidAppModal';
 import AndroidInstallBanner from './components/AndroidInstallBanner';
 import GoogleWorkspaceModal from './components/GoogleWorkspaceModal';
 import BreakingNewsToast from './components/BreakingNewsToast';
+import UrgentNoticePopupModal from './components/UrgentNoticePopupModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function PressClubApp() {
@@ -111,6 +112,7 @@ function PressClubApp() {
       />
       <AndroidInstallBanner onOpenModal={() => setIsAndroidModalOpen(true)} />
       <BreakingNewsToast />
+      <UrgentNoticePopupModal />
     </div>
   );
 }

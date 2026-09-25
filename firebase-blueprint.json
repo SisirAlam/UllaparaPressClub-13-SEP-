@@ -112,9 +112,28 @@
         "role": { "type": "string", "maxLength": 50 }
       },
       "required": ["email", "role"]
+    },
+    "Application": {
+      "title": "Application",
+      "description": "Membership registration application submitted online",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "fullName": { "type": "string", "maxLength": 200 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "mediaName": { "type": "string", "maxLength": 200 },
+        "designation": { "type": "string", "maxLength": 200 },
+        "status": { "type": "string", "maxLength": 50 },
+        "appliedAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "fullName", "phone", "mediaName", "designation"]
     }
   },
   "firestore": {
+    "/applications/{applicationId}": {
+      "schema": { "$ref": "#/entities/Application" },
+      "description": "Online membership applications"
+    },
     "/members/{memberId}": {
       "schema": { "$ref": "#/entities/Member" },
       "description": "Committee members and journalists roster"

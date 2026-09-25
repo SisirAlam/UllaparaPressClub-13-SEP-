@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { usePressClub } from '../context/PressClubContext';
 import CountdownTimer from './CountdownTimer';
+import SectionActionToolbar from './SectionActionToolbar';
 import { 
   Award, 
   BookOpen, 
@@ -60,9 +61,12 @@ export default function GoldenJubilee() {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-950 text-xs font-bold uppercase tracking-wider mb-3">
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-            ঐতিহাসিক মাইলফলক
+          <div className="flex items-center justify-center gap-3 mb-3 flex-wrap">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-950 text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              ঐতিহাসিক মাইলফলক
+            </div>
+            <SectionActionToolbar sectionId="jubilee" sectionTitle="সুবর্ণজয়ন্তী ২০২৭" />
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0d3b66] font-serif">
             {clubInfo.nameBangla} সুবর্ণজয়ন্তী ২০২৭

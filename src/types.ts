@@ -96,6 +96,7 @@ export interface NoticeItem {
   content?: string;
   signatory?: string;
   isImportant?: boolean;
+  isPopup?: boolean;
   type?: 'news' | 'notice' | 'press_release';
   category?: NoticeCategory | string;
   refNumber?: string;
@@ -204,6 +205,9 @@ export interface MemberApplication {
   phone: string;
   email: string;
   reportsSummary: string;
+  photoUrl?: string;
+  facebookUrl?: string;
+  isOtpVerified?: boolean;
   appliedAt: string;
   status: 'pending' | 'approved' | 'rejected';
   notes?: string;

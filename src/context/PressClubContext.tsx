@@ -18,6 +18,8 @@ const DEFAULT_IMAGES: ImageAssets = {
 
 const DEFAULT_INFO: ClubInfo = {
   ...DEFAULT_CLUB_INFO,
+  president: 'মোঃ আনিছুর রহমান লিটন',
+  generalSecretary: 'মোঃ ময়দুল হোসাইন',
   establishedYear: '১৯৭৭',
   officeHours: 'প্রতিদিন সকাল ১০:০০ টা থেকে রাত ৯:০০ টা পর্যন্ত',
 };
@@ -140,6 +142,13 @@ const DEFAULT_AD_CONFIG: AdConfig = {
   contactPerson: 'বিজ্ঞাপন ও বাণিজ্যিক বিভাগ, উল্লাপাড়া প্রেসক্লাব'
 };
 
+const DEFAULT_TICKER_ITEMS: string[] = [
+  'আসন্ন ২০২৭ সালের সুবর্ণজয়ন্তী উৎসবের জন্য স্মারক প্রকাশনা "পঞ্চাশের প্রতিধ্বনি"-র লেখা আহ্বান এবং প্রস্তুতি সভা সংক্রান্ত জরুরি বিজ্ঞপ্তি প্রকাশিত হয়েছে।',
+  '১৯৭৮ থেকে ২০২৭ : উল্লাপাড়া প্রেসক্লাবের গৌরবময় ৫০ বছর পূর্তির ক্ষণগণনা শুরু!',
+  'নতুন সদস্য সংগ্রহ ও নবায়ন কার্যক্রম শুরু হয়েছে। আগ্রহী পেশাদার সাংবাদিকগণ অনলাইনে আবেদন করতে পারেন।',
+  'সৌজন্যে: Sristi Communication, উল্লাপাড়া, সিরাজগঞ্জ।'
+];
+
 interface PressClubContextType {
   clubInfo: ClubInfo;
   updateClubInfo: (updates: Partial<ClubInfo>) => void;
@@ -199,6 +208,20 @@ interface PressClubContextType {
   updateAdConfig: (updates: Partial<AdConfig>) => void;
   resetAdConfig: () => void;
 
+  // News Ticker Management
+  tickerItems: string[];
+  addTickerItem: (text: string) => void;
+  updateTickerItem: (index: number, text: string) => void;
+  deleteTickerItem: (index: number) => void;
+  resetTickerItems: () => void;
+
+  // Urgent Notice Pop-up Modal
+  popupNotice: NoticeItem | null;
+  isPopupNoticeOpen: boolean;
+  setIsPopupNoticeOpen: (open: boolean) => void;
+  setPopupNotice: (notice: NoticeItem | null) => void;
+  openUrgentNoticePopup: (notice?: NoticeItem) => void;
+
   // Admin Overlay controls
   isAdminOpen: boolean;
   setIsAdminOpen: (open: boolean) => void;
@@ -234,7 +257,11 @@ interface PressClubContextType {
 
   // Cloud & Firestore Integration State
   isFirestoreConnected: boolean;
+  cloudSyncStatus: 'synced' | 'syncing' | 'offline' | 'error';
+  lastCloudSyncedAt: string | null;
   syncToFirestore: () => Promise<void>;
+  appVersion: string;
+  themeSizeMb: number;
 }
 
 declare global {
@@ -256,14 +283,24 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
   // 1. Club Info (ensures no null or missing properties)
   const [clubInfo, setClubInfo] = useState<ClubInfo>(() => {
     if (typeof window !== 'undefined' && window.PRESSCLUB_WP_CONFIG?.clubInfo) {
-      return { ...DEFAULT_INFO, ...window.PRESSCLUB_WP_CONFIG.clubInfo };
+      return {
+        ...DEFAULT_INFO,
+        ...window.PRESSCLUB_WP_CONFIG.clubInfo,
+        president: window.PRESSCLUB_WP_CONFIG.clubInfo.president || DEFAULT_INFO.president || 'মোঃ আনিছুর রহমান লিটন',
+        generalSecretary: window.PRESSCLUB_WP_CONFIG.clubInfo.generalSecretary || DEFAULT_INFO.generalSecretary || 'মোঃ ময়দুল হোসাইন'
+      };
     }
     try {
       const saved = localStorage.getItem('upc_club_info');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object') {
-          return { ...DEFAULT_INFO, ...parsed };
+          return {
+            ...DEFAULT_INFO,
+            ...parsed,
+            president: parsed.president || DEFAULT_INFO.president || 'মোঃ আনিছুর রহমান লিটন',
+            generalSecretary: parsed.generalSecretary || DEFAULT_INFO.generalSecretary || 'মোঃ ময়দুল হোসাইন'
+          };
         }
       }
     } catch (e) {
@@ -418,97 +455,207 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
   // 10. Google Workspace Hub Modal
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
 
-  // 11. Firestore Connection State
+  // 11. News Ticker State
+  const [tickerItems, setTickerItems] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('upc_ticker_items');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Error reading upc_ticker_items:', e);
+    }
+    return DEFAULT_TICKER_ITEMS;
+  });
+
+  const addTickerItem = (text: string) => {
+    if (!text.trim()) return;
+    setTickerItems(prev => {
+      const updated = [text.trim(), ...prev];
+      try { localStorage.setItem('upc_ticker_items', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  };
+
+  const updateTickerItem = (index: number, text: string) => {
+    setTickerItems(prev => {
+      const updated = [...prev];
+      updated[index] = text.trim();
+      try { localStorage.setItem('upc_ticker_items', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  };
+
+  const deleteTickerItem = (index: number) => {
+    setTickerItems(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+      try { localStorage.setItem('upc_ticker_items', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  };
+
+  const resetTickerItems = () => {
+    setTickerItems(DEFAULT_TICKER_ITEMS);
+    try { localStorage.setItem('upc_ticker_items', JSON.stringify(DEFAULT_TICKER_ITEMS)); } catch {}
+  };
+
+  // 12. Urgent Notice Pop-up Modal State
+  const [isPopupNoticeOpen, setIsPopupNoticeOpen] = useState(false);
+  const [popupNotice, setPopupNotice] = useState<NoticeItem | null>(null);
+
+  useEffect(() => {
+    try {
+      const hasSeen = sessionStorage.getItem('upc_urgent_popup_seen');
+      if (!hasSeen) {
+        const target = notices.find(n => n.isPopup) || notices.find(n => n.isImportant);
+        if (target) {
+          setPopupNotice(target);
+          const timer = setTimeout(() => {
+            setIsPopupNoticeOpen(true);
+          }, 1200);
+          return () => clearTimeout(timer);
+        }
+      }
+    } catch {}
+  }, [notices]);
+
+  const openUrgentNoticePopup = (notice?: NoticeItem) => {
+    if (notice) {
+      setPopupNotice(notice);
+    } else {
+      const target = notices.find(n => n.isPopup) || notices.find(n => n.isImportant) || notices[0] || null;
+      setPopupNotice(target);
+    }
+    setIsPopupNoticeOpen(true);
+  };
+
+  const APP_VERSION = '2.0';
+  const THEME_SIZE_MB = 19;
+
+  // 13. Firestore Connection & Automatic Cloud Sync State
   const [isFirestoreConnected, setIsFirestoreConnected] = useState(false);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('synced');
+  const [lastCloudSyncedAt, setLastCloudSyncedAt] = useState<string | null>(() => {
+    return new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
+  });
 
   useEffect(() => {
     testFirestoreConnection().then((connected) => {
       setIsFirestoreConnected(connected);
+      if (!connected) {
+        setCloudSyncStatus('offline');
+      }
     });
   }, []);
+
+  // Helper to recursively strip any undefined values so Firestore SDK never rejects payload
+  const sanitizeForFirestore = <T extends Record<string, any>>(obj: T): Record<string, any> => {
+    const result: Record<string, any> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value === undefined) {
+        continue;
+      } else if (value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+        result[key] = sanitizeForFirestore(value);
+      } else {
+        result[key] = value;
+      }
+    }
+    return result;
+  };
 
   // Sync current data to Firebase Firestore
   const syncToFirestore = async () => {
     try {
+      setCloudSyncStatus('syncing');
       const batch = writeBatch(db);
 
       // 1. Sync Club Info
       const infoRef = doc(db, 'club_info', 'main');
-      batch.set(infoRef, {
-        name: clubInfo.nameBangla,
-        established: clubInfo.establishedYear,
-        regNo: clubInfo.jubileeYear,
-        address: clubInfo.address,
-        phone: clubInfo.phone,
-        email: clubInfo.email,
-        president: clubInfo.president,
-        generalSecretary: clubInfo.generalSecretary,
+      const sanitizedClubInfo = sanitizeForFirestore({
+        name: clubInfo.nameBangla || 'উল্লাপাড়া প্রেসক্লাব',
+        established: clubInfo.establishedYear || '১৯৭৭',
+        regNo: clubInfo.jubileeYear || '২০২৭',
+        address: clubInfo.address || 'উল্লাপাড়া উপজেলা প্রেসক্লাব ভবন, থানা সংলগ্ন, উল্লাপাড়া, সিরাজগঞ্জ।',
+        phone: clubInfo.phone || '০১৭১৬-১৫৬৯১৪',
+        email: clubInfo.email || 'ullaparapressclub1977@gmail.com',
+        president: clubInfo.president || 'মোঃ আনিছুর রহমান লিটন',
+        generalSecretary: clubInfo.generalSecretary || 'মোঃ ময়দুল হোসাইন',
         lastUpdated: new Date().toISOString()
-      }, { merge: true });
+      });
+      batch.set(infoRef, sanitizedClubInfo, { merge: true });
 
       // 2. Sync Members
-      members.slice(0, 15).forEach((mem) => {
+      members.slice(0, 20).forEach((mem) => {
         const memRef = doc(db, 'members', mem.id);
-        batch.set(memRef, {
-          id: mem.id,
-          name: mem.name,
-          designation: mem.designation,
-          media: mem.media,
+        const memberData = sanitizeForFirestore({
+          id: mem.id || '',
+          name: mem.name || 'সদস্য',
+          designation: mem.designation || 'সদস্য',
+          media: mem.media || 'সংবাদমাধ্যম',
           phone: mem.phone || '',
           photoUrl: mem.photoUrl || '',
-          category: mem.category
-        }, { merge: true });
+          category: mem.category || 'general'
+        });
+        batch.set(memRef, memberData, { merge: true });
       });
 
       // 3. Sync Events
-      events.slice(0, 10).forEach((evt) => {
+      events.slice(0, 15).forEach((evt) => {
         const evtRef = doc(db, 'events', evt.id);
-        batch.set(evtRef, {
-          id: evt.id,
-          title: evt.title,
-          date: evt.date,
-          dateBangla: evt.dateBangla,
-          time: evt.time,
-          location: evt.location,
-          category: evt.category,
-          categoryName: evt.categoryName,
-          description: evt.description
-        }, { merge: true });
+        const evtData = sanitizeForFirestore({
+          id: evt.id || '',
+          title: evt.title || 'প্রেসক্লাব ইভেন্ট',
+          date: evt.date || '',
+          dateBangla: evt.dateBangla || '',
+          time: evt.time || '',
+          location: evt.location || 'উল্লাপাড়া প্রেসক্লাব হল রুম',
+          category: evt.category || 'meeting',
+          categoryName: evt.categoryName || '',
+          description: evt.description || ''
+        });
+        batch.set(evtRef, evtData, { merge: true });
       });
 
       // 4. Sync Subscribers
-      subscribers.forEach((sub) => {
+      subscribers.slice(0, 25).forEach((sub) => {
         const subRef = doc(db, 'subscribers', sub.id);
-        batch.set(subRef, {
-          id: sub.id,
-          name: sub.name,
-          email: sub.email,
+        const subData = sanitizeForFirestore({
+          id: sub.id || '',
+          name: sub.name || '',
+          email: sub.email || '',
           phone: sub.phone || '',
-          category: sub.category,
-          subscribedAt: sub.subscribedAt
-        }, { merge: true });
+          category: sub.category || 'citizen',
+          subscribedAt: sub.subscribedAt || ''
+        });
+        batch.set(subRef, subData, { merge: true });
       });
 
       // 5. Sync Notices
-      notices.slice(0, 10).forEach((notice) => {
+      notices.slice(0, 15).forEach((notice) => {
         const noticeRef = doc(db, 'notices', notice.id);
-        batch.set(noticeRef, {
-          id: notice.id,
-          title: notice.title,
-          date: notice.date,
-          badge: notice.badge,
-          summary: notice.summary,
-          fullText: notice.fullText,
+        const noticeData = sanitizeForFirestore({
+          id: notice.id || '',
+          title: notice.title || '',
+          date: notice.date || '',
+          badge: notice.badge || 'বিজ্ঞপ্তি',
+          summary: notice.summary || '',
+          fullText: notice.fullText || notice.summary || '',
           isImportant: notice.isImportant || false
-        }, { merge: true });
+        });
+        batch.set(noticeRef, noticeData, { merge: true });
       });
 
       await batch.commit();
       setIsFirestoreConnected(true);
-    } catch (error) {
-      console.error('Firestore sync error:', error);
-      handleFirestoreError(error, OperationType.WRITE, 'batch');
-      throw error;
+      setCloudSyncStatus('synced');
+      setLastCloudSyncedAt(new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    } catch (error: any) {
+      console.warn('Firestore sync note:', error?.message || error);
+      setCloudSyncStatus('error');
+      if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
+        handleFirestoreError(error, OperationType.WRITE, 'batch');
+      }
     }
   };
 
@@ -595,6 +742,24 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
       console.warn('Failed to save upc_newsletter_subscribers:', e);
     }
   }, [subscribers]);
+
+  // 14. Automatic Cloud Database Synchronization
+  // Automatically persists changes to Firebase Firestore in the background
+  const hasMountedForSync = React.useRef(false);
+  useEffect(() => {
+    if (!hasMountedForSync.current) {
+      hasMountedForSync.current = true;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      syncToFirestore().catch(err => {
+        console.warn('Auto cloud sync background notice:', err);
+      });
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [clubInfo, members, notices, events, complaints, subscribers]);
 
   const updateClubInfo = (updates: Partial<ClubInfo>) => {
     setClubInfo(prev => ({ ...prev, ...updates }));
@@ -916,6 +1081,19 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
       return updated;
     });
 
+    // Persist immediately to Firebase Firestore
+    setDoc(doc(db, 'applications', newId), {
+      id: newId,
+      fullName: newApp.fullName,
+      phone: newApp.phone,
+      mediaName: newApp.mediaName,
+      designation: newApp.designation,
+      status: 'pending',
+      appliedAt: todayBengali
+    }).catch(err => {
+      console.warn('Firestore application sync note:', err);
+    });
+
     // If running in WordPress environment, notify WordPress REST API
     if (typeof window !== 'undefined' && window.PRESSCLUB_WP_CONFIG) {
       fetch('/wp-json/pressclub/v1/applications', {
@@ -960,7 +1138,7 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
       designation: app.designation || 'সাধারণ সদস্য',
       media: app.mediaName,
       phone: app.phone,
-      photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+      photoUrl: app.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
       category: category,
       listType: category === 'executive' ? 'list1_executive' : 'list2_general'
     };
@@ -1146,6 +1324,16 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
         adConfig,
         updateAdConfig,
         resetAdConfig,
+        tickerItems,
+        addTickerItem,
+        updateTickerItem,
+        deleteTickerItem,
+        resetTickerItems,
+        popupNotice,
+        isPopupNoticeOpen,
+        setIsPopupNoticeOpen,
+        setPopupNotice,
+        openUrgentNoticePopup,
         isAdminOpen,
         setIsAdminOpen,
         isAdminAuthenticated,
@@ -1168,7 +1356,11 @@ export function PressClubProvider({ children }: { children: React.ReactNode }) {
         isWorkspaceModalOpen,
         setIsWorkspaceModalOpen,
         isFirestoreConnected,
+        cloudSyncStatus,
+        lastCloudSyncedAt,
         syncToFirestore,
+        appVersion: APP_VERSION,
+        themeSizeMb: THEME_SIZE_MB,
       }}
     >
       {children}

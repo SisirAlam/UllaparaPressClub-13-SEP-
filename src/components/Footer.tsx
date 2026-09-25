@@ -261,9 +261,23 @@ export default function Footer({ onNavigate }: FooterProps) {
 
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-blue-900/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
-          <p className="text-blue-200/60 text-center sm:text-left">
-            © ১৯৭৭ – ২০২৭ {clubInfo.nameBangla}। সুবর্ণজয়ন্তী ২০২৭ (১৯৭৭-২০২৭)। সর্বস্বত্ব সংরক্ষিত। সিরাজগঞ্জ, বাংলাদেশ।
-          </p>
+          <div className="space-y-1 text-center sm:text-left">
+            <p className="text-blue-200/60">
+              © ১৯৭৭ – ২০২৭ {clubInfo.nameBangla}। সুবর্ণজয়ন্তী ২০২৭ (১৯৭৭-২০২৭)। সর্বস্বত্ব সংরক্ষিত। সিরাজগঞ্জ, বাংলাদেশ।
+            </p>
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1 text-[11px]">
+              <span className="px-2 py-0.5 rounded-md bg-blue-950/80 border border-blue-700/60 text-amber-300 font-bold font-mono">
+                ভার্সন ২.০ (v2.0)
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-blue-950/80 border border-blue-700/60 text-blue-200">
+                থিম সাইজ: ১৯ মেগাবাইট (19 MB)
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 border border-emerald-600/60 text-emerald-300 flex items-center gap-1 font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>ক্লাউড ডাটাবেজ সয়ংক্রিয় সংরক্ষণ সক্রিয়</span>
+              </span>
+            </div>
+          </div>
 
           <div className="flex items-center gap-4">
             <span className="text-blue-200/70">

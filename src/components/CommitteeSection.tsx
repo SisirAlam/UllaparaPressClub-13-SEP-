@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePressClub } from '../context/PressClubContext';
 import { CommitteeMember } from '../types';
+import SectionActionToolbar from './SectionActionToolbar';
 import { 
   Users, 
   Search, 
@@ -186,9 +187,12 @@ export default function CommitteeSection() {
               </span>
             </div>
 
-            <div className="mt-3 inline-flex items-center gap-2 bg-amber-100/90 text-amber-950 border border-amber-300/80 px-4 py-1 rounded-full text-xs font-bold tracking-wider uppercase shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-              <span>স্থাপিত: ১৯৭৭ ইং • অনুমোদিত কার্যনির্বাহী ও সাধারণ পরিষদ</span>
+            <div className="mt-3 flex items-center justify-center gap-3 flex-wrap">
+              <div className="inline-flex items-center gap-2 bg-amber-100/90 text-amber-950 border border-amber-300/80 px-4 py-1 rounded-full text-xs font-bold tracking-wider uppercase shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                <span>স্থাপিত: ১৯৭৭ ইং • অনুমোদিত কার্যনির্বাহী ও সাধারণ পরিষদ</span>
+              </div>
+              <SectionActionToolbar sectionId="committee" sectionTitle="কার্যনির্বাহী ও সাধারণ পরিষদ কমিটি" />
             </div>
           </div>
 

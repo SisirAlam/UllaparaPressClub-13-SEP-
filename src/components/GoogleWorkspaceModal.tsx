@@ -276,7 +276,7 @@ export default function GoogleWorkspaceModal() {
       const slides = [
         {
           title: 'কার্যনির্বাহী কমিটির পরিচিতি',
-          body: `সভাপতি: ${clubInfo.president}\nসাধারণ সম্পাদক: ${clubInfo.generalSecretary}\nপ্রতিষ্ঠিত: ${clubInfo.establishedYear} খ্রি.\nমোট সদস্য সংখ্যা: ${members.length} জন`
+          body: `সভাপতি: ${clubInfo.president || 'মোঃ আনিছুর রহমান লিটন'}\nসাধারণ সম্পাদক: ${clubInfo.generalSecretary || 'মোঃ ময়দুল হোসাইন'}\nপ্রতিষ্ঠিত: ${clubInfo.establishedYear} খ্রি.\nমোট সদস্য সংখ্যা: ${members.length} জন`
         },
         {
           title: 'প্রেসক্লাবের প্রধান ঘোষণাবলী ও কর্মসূচি',

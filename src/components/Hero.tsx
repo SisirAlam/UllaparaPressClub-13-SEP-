@@ -1,6 +1,7 @@
 import { usePressClub } from '../context/PressClubContext';
 import HeroSlider from './HeroSlider';
 import AdvertisementBanner from './AdvertisementBanner';
+import SectionActionToolbar from './SectionActionToolbar';
 import { 
   Sparkles, 
   ArrowRight, 
@@ -53,6 +54,7 @@ export default function Hero({ onNavigate }: HeroProps) {
               <span className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold tracking-wide shadow-xs">
                 সুবর্ণজয়ন্তী ২০২৭ (১৯৭৭-২০২৭)
               </span>
+              <SectionActionToolbar sectionId="home" sectionTitle="হোম পোর্টাল" variant="dark" />
             </div>
 
             {/* Main Headline */}

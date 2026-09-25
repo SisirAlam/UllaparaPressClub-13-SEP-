@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { usePressClub } from '../context/PressClubContext';
 import { PressClubEvent, EventCategory } from '../types';
+import SectionActionToolbar from './SectionActionToolbar';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -276,9 +277,12 @@ export default function EventCalendar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-10">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold mb-3 border border-blue-200">
-            <CalendarIcon className="w-3.5 h-3.5 text-blue-700" />
-            <span>কার্যক্রম ও একাডেমি ক্যালেন্ডার</span>
+          <div className="flex items-center justify-center gap-3 mb-3 flex-wrap">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold border border-blue-200">
+              <CalendarIcon className="w-3.5 h-3.5 text-blue-700" />
+              <span>কার্যক্রম ও একাডেমি ক্যালেন্ডার</span>
+            </div>
+            <SectionActionToolbar sectionId="events" sectionTitle="ইভেন্ট ও সময়সূচী ক্যালেন্ডার" />
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
             প্রেসক্লাব ইভেন্ট ও সময়সূচী
